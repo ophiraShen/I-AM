@@ -2,27 +2,104 @@
 
 ## 一、数据准备阶段 (12.10-12.11)
 
-### 1. 数据预处理
-- 清洗并结构化1024条对话数据
-- 统一文本格式(标点、空格等)
-- 检查并去除重复数据
-- 数据格式转换为统一的训练格式
+### 1. 数据清洗
+- 数据规模：1024条多轮心理咨询对话
+- 清洗步骤（已完成）：
+  - 移除重复对话
+  - 处理异常字符和特殊符号
+  - 统一标点符号格式
+  - 处理过长对话（截断或分段）
+  - 检查并修正明显的标注错误
+#### 1.1 合并相似的 topic，设置新字段：group
+```python
+TOPIC_MAPPING = {
+    'mental_health': ['mental_health', 'anxiety', 'emotional_management', 'emotional_awareness', 'stress'],
+    'health': ['health'],
+    'career': ['career', 'work_life_balance'],
+    'study': ['study'],
+    'personal_growth': ['self_growth', 'confidence', 'life_purpose', 'behavior_change'],
+    'finance': ['finance'],
+    'relationship': ['relationship', 'social', 'family', 'friendship'],
+}
+```
+#### 1.2 按照对话轮次长度，设置新字段：length_group
+```python
+if length <= 5:
+    length_group = 'short'
+elif length <= 8:
+    length_group = 'medium'
+else:
+    length_group = 'long'
+```
 
-### 2. 数据分析
-- 场景分布分析
-  - 学业场景
-  - 事业场景
-  - 感情场景
-  - 财富场景
-  - 个人成长场景
-- 情感标签分布分析
-- 意图类型分析
-- 回复质量评估
+#### 1.3 按照 'group_length_group' 字段，划分数据集，并统计各类数据量
+```
+mental_health_medium 58
+personal_growth_medium 159
+finance_long 6
+mental_health_long 5
+personal_growth_long 29
+relationship_short 18
+career_short 26
+health_short 4
+relationship_medium 189
+mental_health_short 14
+career_medium 167
+finance_medium 133
+study_long 6
+career_long 16
+relationship_long 21
+health_long 7
+personal_growth_short 25
+study_medium 78
+finance_short 6
+study_short 7
+health_medium 50
+```
 
-### 3. 数据集划分
-- 训练集: 80% (约820条)
-- 验证集: 10% (约102条)
-- 测试集: 10% (约102条)
+### 2. 数据集划分与处理
+- 训练集（80%）：
+  - 完整的标注和特殊标记处理
+  - 保留所有对话结构和语义信息
+  - 可进行适当的数据增强（当前不考虑）
+
+- 验证集（10%）：
+  - 基础的对话结构标记
+  - 保留必要的标注信息
+  - 不进行数据增强
+  - 用于监控训练过程
+
+- 测试集（10%）：
+  - 最小化处理
+  - 仅保留用户输入部分
+  - 移除助手回复的标注
+  - 用于最终效果评估
+
+#### 2.1 按照数据量划分比例
+1. 数据量 >= 50 的 group，划分比例为 80:10:10
+2. 数据量 20-49 的 group，划分比例为 70:15:15
+3. 数据量 < 20 的 group，保证验证集和测试集至少各有一个样本
+
+### 3. 数据标注处理
+- 特殊标记设计
+  - 对话结构标记：`<|begin|>`, `<|end|>`, `<|user|>`, `<|assistant|>`
+  - 主题标记：`<|topic_*|>`（整体对话级别）
+  - 用户标记：
+    - 意图标记：`<|intent_*|>`
+    - 情感标记：`<|emotion_*|>`
+  - 助手标记：
+    - 意图标记：`<|intent_*|>`
+    - 语气标记：`<|tone_*|>`
+    - 技巧标记：`<|technique_*|>`, `<|purpose_*|>`
+    - 对话阶段：`<|phase_*|>`, `<|progress_*|>`
+
+- 标注统计分析
+  - 统计各类标注的分布情况
+  - 验证标注的完整性和一致性
+  - 生成标注覆盖率报告
+  - 识别并补充缺失标注
+
+
 
 ## 二、模型准备阶段 (12.12)
 
