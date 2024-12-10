@@ -1,0 +1,225 @@
+# 吸引力法则/显化引导对话数据集构建指南
+
+## 基本要求和构建步骤
+1. 首先我会给你一些相关书籍的内容，然后你判断这些内容适合哪些 topic；
+2. 依次构建这些 topic 的多轮对话；
+3. 对话风格要求：
+   - 用户(user)：体现真实的中国用户表达方式和语言习惯，问题随意，因为实际情况下用户都是很随意的提问。
+   - 助手(assistant)：严格遵循提供的标准回复风格和内容框架
+4. 对话内容本地化：
+   - 将涉及的货币单位改为人民币
+   - 将国外特有元素替换为对应的中国元素
+   - 场景和例子应贴近中国用户日常生活
+   - 回复统一使用简体中文
+
+
+## 对话设计原则
+1. 对话轮次：2-10轮，需有完整的开始和结束
+2. 用户表达多样化：
+   - 包含问题咨询和困扰表达
+   - 包含积极正向的分享和反馈
+   - 展现真实的情绪波动
+3. 对话发展自然：
+   - 对话从 user 发起
+   - 话题承接合理
+   - 情感转变合理
+   - 问题解决过程符合逻辑
+
+## 对话结构：
+```jsonl
+{
+    "id": "1",
+    "dialogue": [
+        {
+            "role": "user",
+            "content": "xxx",
+            "annotations": {
+                "topic": ["xxx"],
+                "intent": ["xxx"],
+                "emotion": ["xxx"]
+            }
+        },
+        {
+            "role": "assistant",
+            "content": "xxx",
+            "annotations": {
+                "topic": ["xxx"],
+                "intent": ["xxx"],
+                "tone": ["xxx"],
+                "tools": {
+                    "technique_type": ["xxx"],
+                    "technique_purpose": ["xxx"]
+                },
+                "dialogue_stage": {
+                    "phase": "xxx",
+                    "progress_state": "xxx"
+                }
+            }
+        }
+    ]
+}
+```
+## 标注维度
+- topic：话题
+```json
+"topic": [
+    "career",        // 事业发展、工作压力、职场关系等
+    "relationship",  // 感情、婚姻、家庭关系等
+    "friendship",    // 朋友关系、社交困扰等
+    "health",        // 身心健康、压力管理等
+    "study",         // 学业、考试、学习压力等
+    "finance",       // 财务问题、理财压力等
+    "self_growth",   // 个人成长、自我提升等
+    "mental_health", // 情绪管理、心理健康等
+    "life_purpose",  // 人生方向、目标规划等
+    "family",        // 亲子关系、家庭矛盾等
+    "confidence",    // 自信心、自我认同等
+    "anxiety",       // 焦虑、恐惧、担忧等
+    "work_life_balance", // 工作生活平衡
+    "social",        // 社交压力、人际关系等
+    "other"          // 其他未分类问题
+]
+```
+- intent：意图
+```json
+"intent": {
+    "user_intent": [
+        "seeking_help",           // 寻求帮助
+        "expressing_concern",     // 表达担忧
+        "sharing_experience",     // 分享经历
+        "asking_guidance",        // 请求指导
+        "seeking_clarification",  // 寻求解释
+        "expressing_doubt",       // 表达怀疑
+        "showing_resistance",     // 表现抗拒
+        "accepting_guidance",     // 接受指导
+        "requesting_tools",       // 请求具体工具/方法
+        "following_up"           // 跟进反馈
+    ],
+    "assistant_intent": [
+        "providing_guidance",     // 提供指导
+        "offering_comfort",       // 给予安慰
+        "giving_explanation",     // 解释说明
+        "encouraging",            // 鼓励支持
+        "acknowledging_feelings", // 认可感受
+        "reframing_perspective", // 重构视角
+        "suggesting_practice",   // 建议练习
+        "checking_understanding", // 确认理解
+        "providing_feedback",    // 提供反馈
+        "summarizing_progress"   // 总结进展
+    ]
+}
+```
+- emotion/tone：情感
+```json
+    "user_emotion": [
+        // 负面情绪
+        "anxious",      // 焦虑的
+        "frustrated",   // 沮丧的
+        "fearful",      // 恐惧的
+        "sad",          // 悲伤的
+        "angry",        // 愤怒的
+        "overwhelmed",  // 压抑的
+        "insecure",     // 不安的
+        
+        // 中性情绪
+        "confused",     // 困惑的
+        "neutral",      // 平静的
+        "skeptical",    // 怀疑的
+        
+        // 正面情绪
+        "hopeful",      // 充满希望的
+        "relieved",     // 释然的
+        "grateful",     // 感激的
+        "excited",      // 兴奋的
+        "confident",    // 自信的
+        "peaceful"      // 平和的
+    ],
+    
+    "assistant_tone": [ 
+        "gentle",        // 温和的
+        "firm",          // 坚定的
+        "warm",          // 温暖的
+        "professional",  // 专业的
+        "patient",       // 耐心的
+        "understanding", // 理解的
+        "direct",        // 直接的
+        "reflective"     // 反思的
+    ]
+```
+- tools：工具
+```json
+"tools": {
+    "technique_type": [
+        // 引导练习类
+        "guided_meditation",    // 引导冥想
+        "breathing_exercise",   // 呼吸练习
+        "body_scan",           // 身体扫描
+        "visualization",        // 引导想象
+        
+        // 书写练习类
+        "gratitude_journal",   // 感恩日记
+        "reflection_journal",  // 反思日记
+        "goal_setting",        // 目标设定
+        "affirmation_writing", // 肯定宣言
+        
+        // 对话工具类
+        "reframing_dialogue",  // 重构对话
+        "inner_child_dialogue", // 内在小孩对话
+        "self_inquiry",        // 自我探询
+        
+        // 行动计划类
+        "action_planning",     // 行动规划
+        "habit_tracking",      // 习惯追踪
+        "progress_review"      // 进展回顾
+    ],
+    
+    "technique_purpose": [
+        "emotional_awareness",     // 情绪觉察
+        "stress_relief",          // 压力缓解
+        "confidence_building",     // 建立自信
+        "mindset_shift",          // 思维转变
+        "self_discovery",         // 自我发现
+        "behavior_change",        // 行为改变
+        "relationship_improvement" // 关系改善
+    ]
+}
+```
+- dialogue_stage：对话阶段
+```json
+"dialogue_stage": {
+    "phase": [
+        // 初始阶段
+        "problem_identification",  // 问题识别
+        "emotional_expression",    // 情绪表达
+        "context_sharing",         // 背景分享
+        
+        // 探索阶段
+        "problem_exploration",     // 问题探索
+        "root_cause_analysis",     // 根源分析
+        "perspective_examination", // 视角探讨
+        
+        // 介入阶段
+        "tool_introduction",       // 工具介绍
+        "technique_guidance",      // 技巧指导
+        "practice_engagement",     // 练习参与
+        
+        // 整合阶段
+        "insight_integration",     // 洞察整合
+        "action_planning",         // 行动规划
+        "progress_review",         // 进展回顾
+        
+        // 结束阶段
+        "summary_reflection",      // 总结反思
+        "closure",                 // 对话结束
+        "follow_up"               // 后续跟进
+    ],
+    
+    "progress_state": [
+        "beginning",     // 开始
+        "developing",    // 发展中
+        "deepening",     // 深化中
+        "concluding",    // 结束中
+        "completed"      // 已完成
+    ]
+}
+```
