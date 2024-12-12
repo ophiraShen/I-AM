@@ -41,6 +41,6 @@ def process_dialogues(input_file, output_file):
                 f.write(json.dumps(d, ensure_ascii=False) + '\n')
 
 if __name__ == "__main__":
-    input_file = os.path.join(os.path.dirname(__file__), '../partitions/train_dialogues.jsonl')
-    output_file = os.path.join(os.path.dirname(__file__), '../train.jsonl')
+    input_file = os.path.join(os.path.dirname(__file__), '../partitions/val_dialogues.jsonl')
+    output_file = os.path.join(os.path.dirname(__file__), '../val.jsonl')
     process_dialogues(input_file, output_file)
