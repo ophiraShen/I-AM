@@ -19,4 +19,4 @@ def update_requirements():
     print("- environment.yml")
 
 if __name__ == "__main__":
-    update_requirements()
+    update_requirements(pip=True, conda=False)
