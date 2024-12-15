@@ -11,7 +11,7 @@ OUTPUT_DIR=output/${RUN_NAME}-${DATESTR}
 mkdir -p $OUTPUT_DIR
 
 # 模型路径
-MODEL_PATH="/root/autodl-fs/modelscope"
+MODEL_PATH="/root/autodl-fs/modelscope/glm-large-1.5b-chat"
 
 CUDA_VISIBLE_DEVICES=0 python finetune.py \
     --do_train \
@@ -38,4 +38,5 @@ CUDA_VISIBLE_DEVICES=0 python finetune.py \
     --lora_rank 16 \
     --lora_alpha 64 \
     --lora_dropout 0.1 \
+    --target_modules q_proj,k_proj,v_proj \
     --fp16 2>&1 | tee ${OUTPUT_DIR}/fp16.log

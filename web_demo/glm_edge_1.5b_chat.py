@@ -15,7 +15,7 @@ model = AutoModelForCausalLM.from_pretrained(
     BASE_MODEL_PATH, 
     trust_remote_code=True,
     device_map='auto'
-).half()
+)
 
 # 加载 LoRA 权重
 model = PeftModel.from_pretrained(model, LORA_PATH)
