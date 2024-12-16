@@ -10,7 +10,7 @@ from typing import Optional
 
 class GPUMonitor:
     """GPU监控类,用于记录GPU使用情况"""
-    def __init__(self, log_dir: str = "gpu_logs", interval: int = 30):
+    def __init__(self, log_dir: str = "gpu_logs", interval: int = 60):
         """
         初始化GPU监控器
         Args:
@@ -23,13 +23,23 @@ class GPUMonitor:
         
         # 创建日志目录
         os.makedirs(log_dir, exist_ok=True)
-        self.log_file = os.path.join(log_dir, f"gpu_stats_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
         
-        # 创建CSV文件头
-        with open(self.log_file, 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(['Timestamp', 'GPU ID', 'Memory Used (MB)', 
-                           'Memory Total (MB)', 'GPU Load (%)', 'Temperature (°C)'])
+        # 使用日期作为文件名
+        current_date = datetime.now().strftime('%Y%m%d')
+        self.log_file = os.path.join(log_dir, f"gpu_stats_{current_date}.csv")
+        
+        # 如果文件不存在才创建表头
+        if not os.path.exists(self.log_file):
+            with open(self.log_file, 'w', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow([
+                    'Timestamp', 
+                    'GPU ID', 
+                    'Memory Used (MB)',
+                    'Memory Total (MB)', 
+                    'GPU Load (%)', 
+                    'Temperature (°C)'
+                ])
     
     def _monitor(self):
         """监控线程的主要逻辑"""
@@ -38,25 +48,36 @@ class GPUMonitor:
                 gpus = GPUtil.getGPUs()
                 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 
+                # 收集所有GPU的数据
+                gpu_stats = []
+                for gpu in gpus:
+                    gpu_stats.append([
+                        timestamp,
+                        gpu.id,
+                        gpu.memoryUsed,
+                        gpu.memoryTotal,
+                        gpu.load * 100,
+                        gpu.temperature
+                    ])
+                
+                # 批量写入文件
                 with open(self.log_file, 'a', newline='') as f:
                     writer = csv.writer(f)
-                    for gpu in gpus:
-                        writer.writerow([
-                            timestamp,
-                            gpu.id,
-                            gpu.memoryUsed,
-                            gpu.memoryTotal,
-                            gpu.load * 100,
-                            gpu.temperature
-                        ])
-                        print(f"\nGPU Stats at {timestamp}:")
-                        print(f"GPU {gpu.id} - Memory Used: {gpu.memoryUsed}MB")
-                        print(f"GPU Utilization: {gpu.load * 100:.2f}%")
-                        print(f"Temperature: {gpu.temperature}°C")
+                    writer.writerows(gpu_stats)
+                
+                # 打印汇总信息
+                print(f"\nGPU Stats at {timestamp}:")
+                for gpu in gpus:
+                    print(f"GPU {gpu.id}: "
+                          f"Memory: {gpu.memoryUsed:>5.0f}MB, "
+                          f"Util: {gpu.load*100:>5.1f}%, "
+                          f"Temp: {gpu.temperature:>3.0f}°C")
                 
                 time.sleep(self.interval)
+                
             except Exception as e:
                 print(f"Error in GPU monitoring: {e}")
+                time.sleep(self.interval)  # 出错时也等待
                 
     def start(self):
         """启动GPU监控"""
