@@ -40,6 +40,13 @@ class PeftArguments:
         default=300.0,
         metadata={"help": "the scale of the Fourier adapters"}
     )
+    target_modules: Optional[str] = field(
+        default=None,
+        metadata={
+            "help": "List of target modules to apply LoRA, separated by comma."
+            "For example: q_proj,k_proj,v_proj"
+        }
+    )
 
 @dataclass
 class DataTrainingArguments:

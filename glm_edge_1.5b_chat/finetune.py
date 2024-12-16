@@ -20,16 +20,21 @@ def main():
     model_args, data_args, peft_args, training_args = parser.parse_args_into_dataclasses()
 
     # 加载预训练的生成式语言模型 (AutoModelForCausalLM) 和分词器 (AutoTokenizer)
-    model = AutoModelForCausalLM.from_pretrained(model_args.model_name_or_path)
-    tokenizer = AutoTokenizer.from_pretrained(model_args.model_name_or_path)
+    model = AutoModelForCausalLM.from_pretrained(model_args.model_name_or_path, trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(model_args.model_name_or_path, trust_remote_code=True)
 
+    if peft_args.target_modules:
+        peft_args.target_modules = peft_args.target_modules.split(",")
+    else:
+        peft_args.target_modules = ["q_proj", "k_proj", "v_proj"]
+    
     # 设置LoRA的配置
     lora_config = LoraConfig(
         inference_mode=False,
         # 指定任务类型为生成语言模型 (TaskType.CAUSAL_LM)
         task_type=TaskType.CAUSAL_LM,
         # 指定了模型中应用 LoRA 的模块，如 q_proj、k_proj 和 v_proj
-        target_modules=["q_proj", "k_proj", "v_proj"],
+        target_modules=peft_args.target_modules,
         r=peft_args.lora_rank, 
         lora_alpha=peft_args.lora_alpha, 
         lora_dropout=peft_args.lora_dropout
