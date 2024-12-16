@@ -45,7 +45,7 @@
 ```
 
 ### 模型训练与优化 (12.10-12.14)
-- 基座模型：ChatGLM4，Qwen2.5
+- 基座模型：GLM-Edge-1.5B-Chat(glm-edge-1.5b-chat-gguf)
 - 训练方法：LoRA微调
 - 评估指标：
   - 回复相关性
