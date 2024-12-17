@@ -1,5 +1,6 @@
 # glm_4_9b_chat/train.py
 
+import os
 import torch
 from transformers import (
     AutoTokenizer, 
@@ -29,9 +30,11 @@ def setup_model_and_tokenizer(model_args):
         trust_remote_code=True,
         torch_dtype=torch.bfloat16,
     )
-    
+
     tokenizer = AutoTokenizer.from_pretrained(
         model_args.model_name_or_path,
+        truncation=True,
+        max_length=786,
         trust_remote_code=True
     )
     
@@ -57,9 +60,18 @@ def setup_lora(model, peft_args):
 
 def save_model_state(model, accelerator, save_path, is_final_save=False, training_state=None):
     """保存模型状态"""
+    # 确保所有进程同步
     if is_final_save:
         accelerator.wait_for_everyone()
-
+    
+    # 在主进程中创建目录
+    if accelerator.is_main_process:
+        os.makedirs(save_path, exist_ok=True)
+    
+    # 等待目录创建完成
+    accelerator.wait_for_everyone()
+    
+    # 主进程保存模型
     if accelerator.is_main_process:
         unwrapped_model = accelerator.unwrap_model(model)
         unwrapped_model.save_pretrained(
@@ -67,30 +79,24 @@ def save_model_state(model, accelerator, save_path, is_final_save=False, trainin
             is_main_process=accelerator.is_main_process,
             save_function=accelerator.save,
             save_peft=True,
-            save_model_onl=True
+            save_model_only=True  
         )
     
+    # 保存训练状态
     if training_state is not None:
-        torch.save(training_state, f"{save_path}/training_state.pt")
+        # 确保训练状态目录存在
+        if accelerator.is_main_process:
+            os.makedirs(save_path, exist_ok=True)
+        accelerator.wait_for_everyone()
+        
+        # 使用 accelerator 的保存函数
+        accelerator.save(training_state, f"{save_path}/training_state.pt")
     
 
 def main():
     # 解析参数
     parser = HfArgumentParser((ModelArguments, DataTrainingArguments, PeftArguments, TrainingArguments))
     model_args, data_args, peft_args, training_args = parser.parse_args_into_dataclasses()
-    
-    # # 添加checkpoint 设置
-    # training_args = TrainingArguments(
-    #     output_dir=training_args.output_dir,
-    #     **vars(training_args),
-    #     save_strategy="steps",
-    #     save_steps=500,
-    #     save_total_limit=3,
-    #     logging_strategy="steps",
-    #     logging_steps=100,
-    #     evaluation_strategy="steps",
-    #     eval_steps=500,
-    # )
     
     # 设置随机种子
     set_seed(training_args.seed)
@@ -125,66 +131,59 @@ def main():
         model, optimizer, train_dataloader, eval_dataloader, lr_scheduler
     )
     
-    # 启动GPU监控
-    gpu_monitor = GPUMonitor()
-    gpu_monitor.start()
     
-    try:
-        # 训练循环
-        if training_args.do_train:
-            model.train()
-            total_steps = len(train_dataloader) * training_args.num_train_epochs
-            progress_bar = tqdm(range(int(total_steps)), desc="Training")
-            
-            for epoch in range(int(training_args.num_train_epochs)):
-                for step, batch in enumerate(train_dataloader):
-                    outputs = model(**batch)
-                    loss = outputs.loss
-                    accelerator.backward(loss)
-                    
-                    if step % training_args.gradient_accumulation_steps == 0:
-                        optimizer.step()
-                        lr_scheduler.step()
-                        optimizer.zero_grad()
-                        empty_cache()
-                    
-                    
-                    if training_args.logging_steps > 0 and step % training_args.logging_steps == 0:
-                        accelerator.print(f"Epoch {epoch}, Step {step}, Loss: {loss.item():.4f}")
-
-                    # 保存checkpoint
-                    if step % training_args.save_steps == 0:
-                        save_model_state(
-                            model,
-                            accelerator,
-                            f"{training_args.output_dir}/checkpoint-{step}",
-                            training_state={
-                                "epoch": epoch,
-                                "step": step,
-                                "optimizer_state": optimizer.state_dict(),
-                                "lr_scheduler_state": lr_scheduler.state_dict(),
-                            }
-                        )
-
-                    progress_bar.update(1)
+    # 训练循环
+    if training_args.do_train:
+        model.train()
+        total_steps = len(train_dataloader) * training_args.num_train_epochs
+        progress_bar = tqdm(range(int(total_steps)), desc="Training")
         
-        # 评估
-        if training_args.do_eval:
-            model.eval()
-            eval_loss = 0
-            eval_steps = 0
-            
-            for batch in eval_dataloader:
-                with torch.no_grad():
-                    outputs = model(**batch)
-                    eval_loss += outputs.loss.item()
-                    eval_steps += 1
-            
-            eval_loss /= eval_steps
-            accelerator.print(f"Eval Loss: {eval_loss:.4f}")
+        for epoch in range(int(training_args.num_train_epochs)):
+            for step, batch in enumerate(train_dataloader):
+                outputs = model(**batch)
+                loss = outputs.loss
+                accelerator.backward(loss)
+                
+                if step % training_args.gradient_accumulation_steps == 0:
+                    optimizer.step()
+                    lr_scheduler.step()
+                    optimizer.zero_grad()
+                    empty_cache()
+                
+                
+                if training_args.logging_steps > 0 and step % training_args.logging_steps == 0:
+                    accelerator.print(f"Epoch {epoch}, Step {step}, Loss: {loss.item():.4f}")
+
+                # 保存checkpoint
+                if step % training_args.save_steps == 0:
+                    save_model_state(
+                        model,
+                        accelerator,
+                        f"{training_args.output_dir}/checkpoint-{step}",
+                        training_state={
+                            "epoch": epoch,
+                            "step": step,
+                            "optimizer_state": optimizer.state_dict(),
+                            "lr_scheduler_state": lr_scheduler.state_dict(),
+                        }
+                    )
+
+                progress_bar.update(1)
     
-    finally:
-        gpu_monitor.stop()
+    # 评估
+    if training_args.do_eval:
+        model.eval()
+        eval_loss = 0
+        eval_steps = 0
+        
+        for batch in eval_dataloader:
+            with torch.no_grad():
+                outputs = model(**batch)
+                eval_loss += outputs.loss.item()
+                eval_steps += 1
+        
+        eval_loss /= eval_steps
+        accelerator.print(f"Eval Loss: {eval_loss:.4f}")
     
     # 保存模型
     if training_args.output_dir:

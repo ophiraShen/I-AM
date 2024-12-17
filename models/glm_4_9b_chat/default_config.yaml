@@ -1,7 +1,7 @@
 compute_environment: LOCAL_MACHINE
 debug: false
 deepspeed_config:
-  deepspeed_config_file: /root/autodl-tmp/I-AM/glm_4_9b_chat/zero_stage3_config.json
+  deepspeed_config_file: /root/autodl-tmp/I-AM/models/glm_4_9b_chat/zero_stage3_config.json
   zero3_init_flag: false
 distributed_type: DEEPSPEED
 downcast_bf16: 'no'

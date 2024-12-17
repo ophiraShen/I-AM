@@ -22,16 +22,16 @@
         "stage3_max_reuse_distance": 1e9,
         "stage3_gather_16bit_weights_on_model_save": true
     },
-    "gradient_accumulation_steps": 4,
+    "gradient_accumulation_steps": 16,
     "train_batch_size": "auto",
     "train_micro_batch_size_per_gpu": "auto",
     "gradient_clipping": 1.0,
     "zero_allow_untested_optimizer": true,
     
     "activation_checkpointing": {
-        "partition_activations": true,
-        "contiguous_memory_optimization": true,
-        "cpu_checkpointing": true
+        "partition_activations": false,
+        "contiguous_memory_optimization": false,
+        "cpu_checkpointing": false
     },
     
     "wall_clock_breakdown": false,
