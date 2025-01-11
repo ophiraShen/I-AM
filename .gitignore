@@ -1,0 +1,67 @@
+# Python 编译文件
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+.ipynb_checkpoints/
+
+# 虚拟环境
+env/
+venv/
+.venv/
+.env
+
+# 依赖管理
+Pipfile.lock
+poetry.lock
+
+# IDE 配置文件
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# 操作系统生成的文件
+.DS_Store
+Thumbs.db
+
+# 日志文件
+*.log
+logs/
+
+# 临时文件
+*.bak
+*.swp
+
+# 数据库文件
+*.sqlite3
+*.db
+
+# 测试报告和覆盖率
+.coverage
+*.cover
+*.py,cover
+nosetests.xml
+coverage.xml
+
+# 打包文件
+dist/
+build/
+*.egg-info/
+*.egg
+
+# 其他
+ztmp/
+CosyVoice/
+project/backend/agents/jupyter/output/
+
+# 模型
+i_am-20241217-013701/
+*.safetensors
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.ckpt
+
+
