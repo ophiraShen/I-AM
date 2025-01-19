@@ -32,7 +32,7 @@ class CosyVoice2TTS:
 
     def generate_audio(
         self,
-        texts_path,
+        texts,
         voice_type,
         background_music_type,
         output_path,
@@ -40,7 +40,7 @@ class CosyVoice2TTS:
         stream=False,
         music_volume=0.2,
         music_extension_duration=30,
-        fade_in_duration=3,
+        fade_in_duration=5,
         fade_out_duration=10,
         max_retries=3
     ):
@@ -60,8 +60,12 @@ class CosyVoice2TTS:
             fade_out_duration: 淡出时间
             max_retries: 最大重试次数
         """
-        with open(texts_path, 'r', encoding='utf-8') as file:
-            text_segments = yaml.safe_load(file)['sequences']
+
+        if isinstance(texts, str):
+            with open(texts, 'r', encoding='utf-8') as file:
+                text_segments = yaml.safe_load(file)['sequences']
+        else:
+            text_segments = texts['sequences']
 
         prompt_speech_16k = load_wav(self.prompts_config['prompts']['speech'][voice_type], 16000)
         prompt_text = self.prompts_config['prompts']['text'][voice_type]
@@ -147,7 +151,7 @@ class CosyVoice2TTS:
         audio_segments,
         background_music_type,
         music_extension_duration=30,
-        fade_in_duration=3,
+        fade_in_duration=5,
         fade_out_duration=10
     ):
         """合并音频片段并添加背景音乐"""
@@ -189,7 +193,7 @@ class CosyVoice2TTS:
         background_music[0, -fade_out_samples:] *= fade_out_curve
 
         # 调整背景音乐的音量（这里设置为语音的20%音量）
-        background_volume = 0.2
+        background_volume = 0.3
         background_music = background_music * background_volume
 
         # 混合语音和背景音乐
@@ -220,13 +224,13 @@ if __name__ == "__main__":
     # 初始化 TTS 系统
     tts = CosyVoice2TTS(
         model_path='/root/autodl-fs/cosyvoice/pretrained_models/CosyVoice2-0.5B',
-        prompts_config_path='/root/autodl-tmp/I-AM/project/backend/agents/prompts/prompts_zero_shot.yaml'
+        prompts_config_path='/root/autodl-tmp/I-AM/project/backend/agents/prompts/meditation/tts/zero_shot.yaml'
     )
 
     # 生成音频
     tts.generate_audio(
-        texts_path="/root/autodl-tmp/I-AM/project/backend/agents/prompts/texts/debug.yaml",
-        voice_type="male1",
-        background_music_type="bmusic_01",
-        output_path="/root/autodl-tmp/I-AM/project/backend/agents/prompts/texts/debug.wav"
+        texts="/root/autodl-tmp/I-AM/project/backend/agents/jupyter/output/script/exam.yaml",
+        voice_type="female1",
+        background_music_type="bmusic_02",
+        output_path="/root/autodl-tmp/I-AM/project/backend/agents/jupyter/output/tts/exam.wav"
     )
