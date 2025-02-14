@@ -9,19 +9,23 @@ graph TD
     A[用户输入] --> B[路由分析]
     B --> C{路由判断}
     C -->|普通对话| D[主对话模块]
-    C -->|写日记| E[日记模块]
+    C -->|肯定语| E[肯定语模块]
     C -->|冥想| F[冥想模块]
-    D --> G[生成回复]
-    E --> G
-    F --> G
-    G --> H[用户反馈]
-    H --> A
+    C -->|特殊功能| G[用户确认]
+    G -->|同意| H[功能执行]
+    G -->|拒绝| D
+    D --> I[生成回复]
+    E --> I
+    F --> I
+    H --> I
+    I --> J[用户反馈]
+    J --> A
 ```
 
 # 功能模块
 
 ### 1. 路由分析
-- 识别用户意图类型（普通对话/日记/冥想）
+- 识别用户意图类型（普通对话/肯定语/冥想）
 - 严格区分功能讨论和功能使用
 - 确保用户明确同意后才触发特殊功能
 - 默认保持在普通对话模式
@@ -32,11 +36,11 @@ graph TD
 - 回答用户疑问
 - 引导用户使用其他功能
 
-### 3. 日记模块
-- 提供日记写作引导
-- 生成日记模板
-- 记录用户日记内容
-- 提供写作反馈
+### 3. 肯定语模块
+- 提供积极肯定的语句
+- 生成个性化的肯定语
+- 跟踪用户反馈
+- 调整肯定语内容
 
 ### 4. 冥想模块
 - 提供冥想引导
@@ -74,53 +78,43 @@ graph TD
 
 ### 1. 状态管理
 ```python
-# 路由状态
-class RouterState(TypedDict):
-    messages: Annotated[list[AnyMessage], add_messages]
-    route: Literal["diary", "meditation", "normal_chat"]
-
-# 日记状态
-class DiaryState(TypedDict):
-    messages: Annotated[list[AnyMessage], add_messages]
-
-# 冥想状态
-class MeditationState(TypedDict):
-    messages: Annotated[list[AnyMessage], add_messages]
+class OverallState(BaseModel):
+    messages: List[AnyMessage]  # 对话历史
+    route: Literal["affirmation", "meditation", "normal_chat"]  # 当前路由
+    log: List[str]  # 系统日志
 ```
 
 ### 2. 核心工作流
 ```python
-# 初始化模型和提示词
+# 初始化模型
 llm = ChatOpenAI(model="deepseek-chat")
-normal_system_prompt = ChatPromptTemplate([
-    SystemMessage(content=system_prompt), 
-    MessagesPlaceholder(variable_name="messages")
-])
 
-# 构建子图
-DiaryModel = StateGraph(DiaryState)
-DiaryModel.add_node("diary_agent", diary_agent)
-DiaryModel.add_edge(START, "diary_agent")
-DiaryModel.add_edge("diary_agent", END)
+# 构建主对话图
+main_dialogue_workflow = StateGraph(OverallState)
 
-MeditationModel = StateGraph(MeditationState)
-MeditationModel.add_node("meditation_agent", meditation_agent)
-MeditationModel.add_edge(START, "meditation_agent")
-MeditationModel.add_edge("meditation_agent", END)
+# 添加核心节点
+main_dialogue_workflow.add_node("router_node", router_node)
+main_dialogue_workflow.add_node("user_feadback_agent", user_feadback_agent)
+main_dialogue_workflow.add_node("normal_chat_agent", normal_chat_agent)
+main_dialogue_workflow.add_node("affirmation_agent", affirmation_agent)
+main_dialogue_workflow.add_node("meditation_agent", meditation_agent)
 
-# 主对话图
-MainModel = StateGraph(RouterState)
-MainModel.add_node("router", router_node)
-MainModel.add_node("normal_chat", normal_chat)
-MainModel.add_node("diary", diary_chain)
-MainModel.add_node("meditation", meditation_chain)
+# 设置条件路由
+main_dialogue_workflow.add_conditional_edges(
+    "router_node",
+    router_condition_edge,
+    {
+        "user_feadback_agent": "user_feadback_agent",
+        "normal_chat_agent": "normal_chat_agent"
+    }
+)
 ```
 
 ### 3. 路由策略
 - 默认返回 "normal_chat"
-- 仅在用户明确表示要进行冥想或写日记时切换路由
-- 严格区分"讨论功能"和"使用功能"
-- 对功能建议的明确同意才触发路由切换
+- 通过 router_node 分析用户意图
+- 特殊功能需要用户确认
+- 功能执行后返回普通对话
 
 ## 评估指标
 1. 对话完成率

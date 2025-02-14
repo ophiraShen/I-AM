@@ -1,65 +1,83 @@
 # 个性化冥想引导模块设计
 
 ## 一、核心组成部分
-1. **引导词生成系统** (待实现)
+1. **引导词生成系统** ✅
 2. **语音合成模块** ✅
 3. **背景音乐系统** ✅
 4. **音频混合器** ✅
 
 ## 二、引导词生成结构
 
-1. 引导词提纲
+### 1. 生成流程
+1. 对话分析 -> 冥想大纲生成
+2. 大纲扩展 -> 详细引导词脚本
+3. 语气标记 -> 带情感标记的脚本
+4. TTS合成 -> 最终音频
+
+### 2. 大纲结构
 ```json
 {
-    "meditation_script": {
-        "user_context": {
-            "main_goal": "通过考试",
-            "current_stress": "学习压力大",
-            "preferred_duration": 4  // 分钟
+    "user_context": {
+        "main_goal": "用户的主要目标",
+        "current_state": "当前的情绪状态",
+        "desired_outcome": "期望达到的效果"
+    },
+    "script_structure": {
+        "opening": {
+            "focus": "开场主题",
+            "content_brief": "开场内容概要"
         },
-        "script_structure": {
-            "opening": {
-                "duration": 30,  // 秒
-                "content": "让我们找到一个舒适的姿势，深深地呼吸..."
-            },
-            "main_guidance": {
-                "duration": 180,  // 秒
-                "segments": [
-                    {
-                        "focus": "放松身心",
-                        "content": "感受每一次呼吸带来的平静...",
-                        "duration": 45
-                    },
-                    {
-                        "focus": "目标可视化",
-                        "content": "想象你正坐在考场中，感受知识自然流动...",
-                        "duration": 90
-                    },
-                    {
-                        "focus": "信心建立",
-                        "content": "你已经为考试做了充分的准备...",
-                        "duration": 45
-                    }
-                ]
-            },
-            "closing": {
-                "duration": 30,  // 秒
-                "content": "慢慢地，让我们带着这份平静和自信回到当下..."
-            }
+        "main_guidance": {
+            "segments": [
+                {
+                    "focus": "段落主题焦点",
+                    "content_brief": "内容简要提示"
+                }
+                // ... 更多段落
+            ]
+        },
+        "closing": {
+            "focus": "结束主题",
+            "content_brief": "结束内容概要"
         }
     }
 }
 ```
 
+### 3. 脚本结构
+```yaml
+sequences:
+  - id: 0
+    text: "引导词文本"
+    duration: 3  # 秒
+  # ... 更多文本段落
+```
+
 ## 三、已实现的功能
 
-### 1. 语音合成系统 (CosyVoice2TTS)
+### 1. 引导词生成系统
+```python
+def create_meditation_outline(state):
+    """基于对话生成冥想大纲"""
+
+def create_meditation_script(state):
+    """基于大纲生成详细脚本"""
+
+def create_marked_meditation_script(state):
+    """添加语气和情感标记"""
+```
+
+主要特性：
+- 基于对话内容分析用户需求
+- 自动生成个性化冥想大纲
+- 结构化的引导词生成
+- 智能语气标记系统
+- 错误重试机制
+
+### 2. 语音合成系统 (CosyVoice2TTS)
 ```python
 class CosyVoice2TTS:
-    def __init__(self, model_path, prompts_config_path):
-        """初始化语音合成系统"""
-        
-    def generate_audio(self, texts_path, voice_type, background_music_type, output_path):
+    def generate_audio(self, texts, voice_type, background_music_type, output_path):
         """生成完整的冥想音频"""
 ```
 
@@ -70,7 +88,7 @@ class CosyVoice2TTS:
 - 错误重试机制
 - 流式处理支持
 
-### 2. 音频处理系统
+### 3. 音频处理系统
 ```python
 def _combined_audios(self, text_segments, audio_segments, background_music_type):
     """音频混合处理"""
@@ -99,42 +117,19 @@ background_music:
   bmusic_02: "path/to/background_music_2.wav"
 ```
 
-### 2. 冥想文本配置 (meditation_texts.yaml)
-```yaml
-sequences:
-  - text: "让我们开始今天的冥想..."
-    duration: 3
-  - text: "深深地吸一口气..."
-    duration: 2
-  # ... 更多文本段落
-```
-
 ## 五、使用示例
 
 ```python
-# 初始化 TTS 系统
-tts = CosyVoice2TTS(
-    model_path='path/to/CosyVoice2-0.5B',
-    prompts_config_path='path/to/prompts_zero_shot.yaml'
-)
+# 创建冥想处理图
+meditation_graph = create_meditation_graph()
 
-# 生成冥想音频
-tts.generate_audio(
-    texts_path="path/to/meditation_texts.yaml",
-    voice_type="male1",
-    background_music_type="bmusic_01",
-    output_path="path/to/output/meditation.wav"
-)
+# 处理用户对话，生成冥想音频
+result = meditation_graph.invoke(NodeResult(data={"conversation": conversation}))
 ```
 
 ## 六、待实现功能
 
-1. **引导词生成系统**
-   - 基于用户目标的文本生成
-   - 情感分析和适应
-   - 个性化内容调整
-
-2. **用户反馈系统**
+1. **用户反馈系统**
    - 冥想效果评估
    - 用户偏好学习
    - 内容动态调整
@@ -142,21 +137,18 @@ tts.generate_audio(
 ## 七、技术栈
 
 ### 已使用：
+- LangChain (文本生成)
+- LangGraph (工作流编排)
 - CosyVoice2 (语音合成)
 - PyTorch (音频处理)
 - TorchAudio (音频处理)
 - YAML (配置管理)
 
-### 计划使用：
-- LLM (文本生成)
-- Sentiment Analysis (情感分析)
-- FastAPI (API 服务)
-
-## 八、注意事项
+## 七、注意事项
 
 1. **音频处理**
    - 确保音频采样率匹配 (16kHz)
-   - 控制背景音乐音量 (建议 20%-30%)
+   - 控制背景音乐音量 (20%-30%)
    - 添加适当的淡入淡出效果
 
 2. **性能优化**

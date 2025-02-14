@@ -1,11 +1,15 @@
 # I-AM/project/backend/agents/affirmation_agent.py
-
 import sys
 import os
+from pathlib import Path
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent
+sys.path.append(str(ROOT_DIR))
+from dotenv import load_dotenv
+load_dotenv(ROOT_DIR / '.env')
+
 import yaml
 from datetime import datetime
 from typing import List, Optional, Dict, Any, Literal
-from dotenv import load_dotenv
 
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
@@ -14,8 +18,8 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import AnyMessage, add_messages
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 
-# Load environment variables
-load_dotenv()
+
+config_path = ROOT_DIR / 'backend' / 'config' / 'affirmation.yaml'
 
 def add_log(current_log, new_log: str) -> list[str]:
     if current_log is None:
@@ -81,8 +85,7 @@ class Affirmations(BaseModel):
         }
 
 class AffirmationAgent:
-    def __init__(self, config_path: str):
-        # Load configuration
+    def __init__(self):
         with open(config_path, 'r') as f:
             self.config = yaml.safe_load(f)
         
@@ -94,10 +97,12 @@ class AffirmationAgent:
         )
         
         # Load prompts
-        with open(self.config['prompts']['insight'], 'r') as f:
-            self.INSIGHT_PROMPT = f.read()
-        with open(self.config['prompts']['generator'], 'r') as f:
-            self.GENERATOR_PROMPT = f.read()
+        insight_prompt_path = self.config['prompts']['insight']
+        generator_prompt_path = self.config['prompts']['generator']
+        with open(insight_prompt_path, 'r') as f:
+            self.insight_prompt = f.read()
+        with open(generator_prompt_path, 'r') as f:
+            self.generator_prompt = f.read()
         
     def create_insight(self, state: NodeResult) -> NodeResult:
         try:
@@ -109,21 +114,36 @@ class AffirmationAgent:
                     conversation_content += f"assistant: {message.content}\n"
                 else:
                     continue
+                    
             insight_prompt = ChatPromptTemplate([
-                ("system", self.INSIGHT_PROMPT),
+                ("system", self.insight_prompt),
                 ("human", "{conversation}")
             ])
             generate_insight_chain = insight_prompt | self.llm.with_structured_output(InsightAnalyzer)
             insight = generate_insight_chain.invoke({"conversation": conversation_content})
-            return NodeResult(local_route="insight_node", route="affirmation", data={"conversation": conversation_content, "insight": insight.as_str}, log="对话分析成功")
+            
+            # 保存分析结果
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+            output_path = self.config['paths']['output_path'] / "insights" / f"{timestamp}.yaml"
+            
+            with open(output_path, 'w', encoding='utf-8') as f:
+                yaml.dump({"insight": insight.as_str}, f, allow_unicode=True)
+                
+            return NodeResult(
+                local_route="insight_node", 
+                route="affirmation", 
+                data={"conversation": conversation_content, "insight": insight.as_str}, 
+                log=f"对话分析成功，已保存至 {output_path}"
+            )
         except Exception as e:
             return NodeResult(local_route="insight_node", route="affirmation", success=False, error=str(e), log="对话分析失败。")
 
     def create_affirmations(self, state: NodeResult) -> NodeResult:
         try:
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
             user_message = "请基于以下信息生成个性化肯定语：\n\n对话内容：\n{conversation}\n对话分析：\n{insight}"
             generator_prompt = ChatPromptTemplate([
-                ("system", self.GENERATOR_PROMPT),
+                ("system", self.generator_prompt),
                 ("human", user_message)
             ])
             generate_affirmations_chain = generator_prompt | self.llm.with_structured_output(Affirmations)
@@ -134,15 +154,17 @@ class AffirmationAgent:
                 }
             )
             
-            # Save to file
-            timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-            output_dir = self.config['paths']['output_path']
-            os.makedirs(output_dir, exist_ok=True)
-            output_path = f"{output_dir}/{timestamp}.yaml"
+            # 保存生成的肯定语
+            output_path = self.config['paths']['output_path'] / "affirmations" / f"{timestamp}.yaml"
+            
             with open(output_path, 'w', encoding='utf-8') as f:
                 yaml.dump(affirmations.to_yaml_dict, f, allow_unicode=True)
 
-            return NodeResult(local_route="generator_node", route="affirmation", log=f"肯定语生成成功。path: {output_path}\n\n 肯定语：{affirmations.as_str}")
+            return NodeResult(
+                local_route="generator_node", 
+                route="affirmation", 
+                log=f"肯定语生成成功。path: {output_path}\n\n肯定语：{affirmations.as_str}"
+            )
         except Exception as e:
             return NodeResult(local_route="generator_node", route="affirmation", success=False, error=str(e), log="肯定语生成失败")
 

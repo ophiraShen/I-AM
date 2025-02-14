@@ -1,3 +1,11 @@
+#I-AM/project/backend/agents/meditation_agent.py
+import sys
+import os
+from pathlib import Path
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent
+sys.path.append(str(ROOT_DIR))
+from dotenv import load_dotenv
+load_dotenv(ROOT_DIR / '.env')
 import logging
 
 logging.getLogger().setLevel(logging.INFO)
@@ -21,13 +29,11 @@ loggers_to_quiet = [
 for logger_name in loggers_to_quiet:
     logging.getLogger(logger_name).setLevel(logging.WARNING)
 
-import sys
-import os
+
 import json
 import yaml
 from datetime import datetime
-from typing import List, Optional, Dict, Any
-from dotenv import load_dotenv
+from typing import List, Optional, Dict, Any, Literal
 
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
@@ -35,18 +41,11 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import AnyMessage, add_messages
 from pydantic import BaseModel, Field, ConfigDict, field_validator
-from typing import List, Optional, Dict, Any, Literal
 
-from meditation_tts import CosyVoice2TTS
+from .meditation_tts import CosyVoice2TTS
 
-# 环境设置
-# sys.path.append('/root/autodl-tmp/I-AM/project/backend/agents')
-load_dotenv()
 
-# 加载配置
-with open('/root/autodl-tmp/I-AM/project/backend/config/meditation.yaml', 'r') as f:
-    config = yaml.safe_load(f)
-
+config_path = ROOT_DIR / 'backend' / 'config' / 'meditation.yaml'
 
 #=======================================================================================
 def add_log(current_log, new_log: str) -> list[str]:
@@ -193,192 +192,176 @@ class MarkedMeditationScript(BaseModel):
             ]
         }
 
-# 初始化 LLM
-llm = ChatOpenAI(
-    model="deepseek-chat", 
-    openai_api_key=os.getenv("DEEPSEEK_API_KEY"), 
-    openai_api_base='https://api.deepseek.com'
-)
-
-# 加载提示词
-def load_prompt(filename):
-    with open(filename, 'r', encoding='utf-8') as f:
-        return f.read()
-
-MEDITATION_OUTLINE_PROMPT = load_prompt(config['prompts']['outline'])
-MEDITATION_SCRIPT_PROMPT = load_prompt(config['prompts']['script'])
-MEDITATION_TONE_PROMPT = load_prompt(config['prompts']['tone'])
-
-# 节点函数定义
-def create_meditation_outline(state: NodeResult) -> NodeResult:
-    try:
-        conversation_content = ""
-        for message in state.messages:
-            if isinstance(message, HumanMessage):
-                conversation_content += f"user: {message.content}\n"
-            elif isinstance(message, AIMessage):
-                conversation_content += f"assistant: {message.content}\n"
-            else:
-                continue
-        meditation_outline_prompt = ChatPromptTemplate.from_messages([
-            ("system", MEDITATION_OUTLINE_PROMPT),  # 使用你已有的提示词
-            ("user", "{conversation_content}")
-        ])
-        generate_meditation_outline = meditation_outline_prompt | llm.with_structured_output(MeditationOutline)
-        outline = generate_meditation_outline.invoke({"conversation_content": conversation_content})
-
-        print("大纲已生成")
+class MeditationAgent:
+    def __init__(self):
+        with open(config_path, 'r') as f:
+            self.config = yaml.safe_load(f)
         
-        return NodeResult(route="meditation", data={"outline": outline.as_str}, log="大纲已生成。")
-    except Exception as e:
-        return NodeResult(route="meditation", success=False, error=str(e), log="大纲生成失败。")
+        # 初始化 LLM
+        self.llm = ChatOpenAI(
+            model="deepseek-chat",
+            openai_api_key=os.getenv("DEEPSEEK_API_KEY"),
+            openai_api_base='https://api.deepseek.com'
+        )
+        
+        # Load prompts
+        outline_prompt_path = self.config['prompts']['outline']
+        script_prompt_path = self.config['prompts']['script']
+        tone_prompt_path = self.config['prompts']['tone']
 
-def create_meditation_script(state: NodeResult) -> NodeResult:
-    try:
-        script_prompt = ChatPromptTemplate.from_messages([
-            ("system", MEDITATION_SCRIPT_PROMPT),
-            ("user", """请根据以下冥想大纲生成详细的引导词：
+        with open(outline_prompt_path, 'r') as f:  
+            self.outline_prompt = f.read()
+        with open(script_prompt_path, 'r') as f:
+            self.script_prompt = f.read()
+        with open(tone_prompt_path, 'r') as f:
+            self.tone_prompt = f.read()
+            
+        # 初始化 TTS
+        self.tts = CosyVoice2TTS(
+            model_path=self.config['tts']['tts_model_path'],
+            prompts_config_path=self.config['tts']['tts_resources_config']
+        )
+
+    def create_meditation_outline(self, state: NodeResult) -> NodeResult:
+        try:
+            conversation_content = ""
+            for message in state.messages:
+                if isinstance(message, HumanMessage):
+                    conversation_content += f"user: {message.content}\n"
+                elif isinstance(message, AIMessage):
+                    conversation_content += f"assistant: {message.content}\n"
+                else:
+                    continue
+            meditation_outline_prompt = ChatPromptTemplate.from_messages([
+                ("system", self.outline_prompt),  # 使用你已有的提示词
+                ("user", "{conversation_content}")
+            ])
+            generate_meditation_outline = meditation_outline_prompt | self.llm.with_structured_output(MeditationOutline)
+            outline = generate_meditation_outline.invoke({"conversation_content": conversation_content})
+
+            print("大纲已生成")
+            
+            return NodeResult(route="meditation", data={"outline": outline.as_str}, log="大纲已生成。")
+        except Exception as e:
+            return NodeResult(route="meditation", success=False, error=str(e), log="大纲生成失败。")
+
+    def create_meditation_script(self, state: NodeResult) -> NodeResult:
+        try:
+            script_prompt = ChatPromptTemplate.from_messages([
+                ("system", self.script_prompt),
+                ("user", """请根据以下冥想大纲生成详细的引导词：
 
         {outline}""")
-        ])
-        generate_meditation_script = script_prompt | llm.with_structured_output(MeditationScript)
-        script = generate_meditation_script.invoke({"outline": state.data['outline']})
+            ])
+            generate_meditation_script = script_prompt | self.llm.with_structured_output(MeditationScript)
+            script = generate_meditation_script.invoke({"outline": state.data['outline']})
 
-        print("脚本已生成")
-        
-        return NodeResult(route="meditation", data={"script": script.as_str}, log="脚本已生成。")
-    except Exception as e:
-        return NodeResult(route="meditation", success=False, error=str(e), log="脚本生成失败。")
+            print("脚本已生成")
+            
+            return NodeResult(route="meditation", data={"script": script.as_str}, log="脚本已生成。")
+        except Exception as e:
+            return NodeResult(route="meditation", success=False, error=str(e), log="脚本生成失败。")
 
-def create_marked_meditation_script(state: NodeResult) -> NodeResult:
-    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-    try:
-        tone_marking_prompt = ChatPromptTemplate.from_messages([
-            ("system", MEDITATION_TONE_PROMPT),
-            ("user", "请为以下冥想引导词添加适当的语气标记：\n\n{script}")
-        ])
-        generate_marked_script = tone_marking_prompt | llm.with_structured_output(MarkedMeditationScript)
-        marked_script = generate_marked_script.invoke({"script": state.data['script']})
-        marked_script_dict = marked_script.to_yaml_dict()
-        output_path = f"{config['paths']['script_output_path']}/{timestamp}.yaml"
-        with open(output_path, 'w', encoding='utf-8') as f:
-            yaml.dump(marked_script_dict, f, indent=2, allow_unicode=True, sort_keys=False)
-
-        print("带标记的脚本已生成")
-        
-        return NodeResult(route="meditation", data=marked_script_dict, log=f"带标记的脚本已生成。path: {output_path}")
-    except Exception as e:
-        return NodeResult(route="meditation", success=False, error=str(e), log="带标记的脚本生成失败。")
-
-def create_tts(state: NodeResult) -> NodeResult:
-    try:
+    def create_marked_meditation_script(self, state: NodeResult) -> NodeResult:
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        output_path = f"{config['tts']['tts_output_path']}/{timestamp}.wav"
-        tts = CosyVoice2TTS(
-            model_path=config['tts']['tts_model_path'],
-            prompts_config_path=config['tts']['tts_resources_config']
+        try:
+            tone_marking_prompt = ChatPromptTemplate.from_messages([
+                ("system", self.tone_prompt),
+                ("user", "请为以下冥想引导词添加适当的语气标记：\n\n{script}")
+            ])
+            generate_marked_script = tone_marking_prompt | self.llm.with_structured_output(MarkedMeditationScript)
+            marked_script = generate_marked_script.invoke({"script": state.data['script']})
+            marked_script_dict = marked_script.to_yaml_dict()
+            
+            output_path = self.config['paths']['script_output_path'] / f"{timestamp}.yaml"
+            with open(output_path, 'w', encoding='utf-8') as f:
+                yaml.dump(marked_script_dict, f, indent=2, allow_unicode=True, sort_keys=False)
+            
+            return NodeResult(route="meditation", data=marked_script_dict, log=f"带标记的脚本已生成。path: {output_path}")
+        except Exception as e:
+            return NodeResult(route="meditation", success=False, error=str(e), log="带标记的脚本生成失败。")
+
+    def create_tts(self, state: NodeResult) -> NodeResult:
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        try:
+            output_path = self.config['paths']['tts_output_path'] / f"{timestamp}.wav"
+            
+            self.tts.generate_audio(
+                texts=state.data,
+                voice_type="female1",
+                background_music_type="bmusic_02",
+                output_path=str(output_path)
+            )
+
+            return NodeResult(route="meditation", log=f"冥想音频已生成。path: {output_path}")
+        except Exception as e:
+            return NodeResult(route="meditation", success=False, error=str(e), log="冥想音频生成失败。")
+
+    def handle_error(self, state: NodeResult) -> NodeResult:
+        error_msg = state.error
+        print(f"处理错误: {error_msg}")
+        return NodeResult(
+            route="meditation",
+            success=False,
+            error=error_msg,
+            log=f"处理错误: {error_msg}"
         )
-        tts.generate_audio(
-            texts=state.data,
-            voice_type="female1",
-            background_music_type="bmusic_02",
-            output_path=output_path
-        )  
 
-        print(f"音频已生成。path: {output_path}")
+    def check_success(self, state: NodeResult):
+        if state.success:
+            return "success_node"
+        else:
+            return "error_node"
+
+    def create_graph(self) -> Any:
+        """创建并返回工作流图"""
+        workflow = StateGraph(NodeResult)
         
-        return NodeResult(route="meditation", log=f"冥想音频已生成。path: {output_path}\n\n 冥想脚本：{state.data['script']}")
-    except Exception as e:
-        return NodeResult(route="meditation", success=False, error=str(e), log="冥想音频生成失败。")
+        # 添加节点
+        workflow.add_node("outline_node", self.create_meditation_outline)
+        workflow.add_node("script_node", self.create_meditation_script)
+        workflow.add_node("tone_marking_node", self.create_marked_meditation_script) 
+        workflow.add_node("tts_node", self.create_tts)
+        workflow.add_node("error_node", self.handle_error)
 
-# error node
-def handle_error(state: NodeResult) -> NodeResult:  # 修改返回类型标注
-    error_msg = state.error
-    print(f"处理错误: {error_msg}")
-    # 返回正确的 NodeResult 对象
-    return NodeResult(
-        route="meditation",
-        success=False,
-        error=error_msg,
-        log=f"处理错误: {error_msg}"
-    )
+        # 添加边
+        workflow.add_conditional_edges(
+            "outline_node",
+            self.check_success,
+            {
+                "success_node": "script_node",
+                "error_node": "error_node"
+            }
+        )
 
-# condition function
-def check_success(state: NodeResult):
-    if state.success:
-        return "success_node"
-    else:
-        return "error_node"
-
-
-# 图定义
-def create_meditation_graph():
-    
-
-    MeditationGraph = StateGraph(NodeResult)
-    
-    MeditationGraph.add_node("outline_node", create_meditation_outline)
-    MeditationGraph.add_node("script_node", create_meditation_script)
-    MeditationGraph.add_node("tone_marking_node", create_marked_meditation_script)
-    MeditationGraph.add_node("tts_node", create_tts)
-    MeditationGraph.add_node("error_node", handle_error)
-
-    MeditationGraph.add_conditional_edges(
-        "outline_node",
-        check_success,
-        {
-            "success_node": "script_node",
-            "error_node": "error_node"
-        }
-    )
-
-    MeditationGraph.add_conditional_edges(
+        workflow.add_conditional_edges(
             "script_node",
-            check_success,
+            self.check_success,
             {
                 "success_node": "tone_marking_node",
                 "error_node": "error_node"
             }
         )
         
-    MeditationGraph.add_conditional_edges(
-        "tone_marking_node",
-        check_success,
-        {
-            "success_node": "tts_node",
-            "error_node": "error_node"
-        }
-    )
+        workflow.add_conditional_edges(
+            "tone_marking_node",
+            self.check_success,
+            {
+                "success_node": "tts_node",
+                "error_node": "error_node"
+            }
+        )
 
-    MeditationGraph.add_conditional_edges(
-        "tts_node",
-        check_success,
-        {
-            "success_node": END,
-            "error_node": "error_node"
-        }
-    )
-    MeditationGraph.add_edge(START, "outline_node")
-    MeditationGraph.add_edge("error_node", END)
+        workflow.add_conditional_edges(
+            "tts_node",
+            self.check_success,
+            {
+                "success_node": END,
+                "error_node": "error_node"
+            }
+        )
 
-    meditation_graph = MeditationGraph.compile()
+        workflow.add_edge(START, "outline_node")
+        workflow.add_edge("error_node", END)
 
-    return meditation_graph
-
-# 主函数
-def main():
-    meditation_graph = create_meditation_graph()
-
-    # 读取对话数据
-    with open('/root/autodl-tmp/I-AM/project/backend/agents/jupyter/conversations_data/meditation.json', 'r', encoding='utf-8') as f:
-        conversation_json = json.load(f)
-
-    conversation = ""
-    for message in conversation_json['messages']:
-        conversation += f"{message['role']}: {message['content']}\n"
-
-    # 执行图
-    meditation_graph.invoke(NodeResult(data={"conversation": conversation}))
-
-if __name__ == "__main__":
-    main()
+        return workflow.compile()

@@ -1,21 +1,12 @@
-# project/backend/models/base.py
+#I-AM/project/backend/models/base.py
+from datetime import datetime
+from sqlalchemy import Column, Integer, DateTime
+from app.database import Base
 
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from dotenv import load_dotenv
-import os
+class BaseModel(Base):
+    """所有模型的基类"""
+    __abstract__ = True
 
-load_dotenv()
-
-# 设置数据库URL
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
-
-# 创建数据库引擎
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
-
-# 创建会话
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-# 创建基类
-Base = declarative_base()
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False) 

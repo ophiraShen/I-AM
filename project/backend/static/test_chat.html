@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>I-AM Chat Test</title>
+    <style>
+        .container {
+            display: flex;
+            width: 1000px;
+            margin: 20px auto;
+            gap: 20px;
+        }
+        .sidebar {
+            width: 250px;
+            border: 1px solid #ccc;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        .main-content {
+            flex-grow: 1;
+        }
+        #chat-container {
+            width: 100%;
+            height: 400px;
+            border: 1px solid #ccc;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .chat-list {
+            margin-top: 20px;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+        .chat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .chat-item.active {
+            background-color: #e3f2fd;
+        }
+        #message-input {
+            width: 500px;
+            padding: 10px;
+            margin: 10px;
+        }
+        #send-button {
+            padding: 10px 20px;
+        }
+        .message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .user-message {
+            background-color: #e3f2fd;
+            margin-left: 20%;
+        }
+        .bot-message {
+            background-color: #f5f5f5;
+            margin-right: 20%;
+        }
+        .control-panel {
+            width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 5px;
+            border-radius: 3px;
+        }
+        .connected {
+            background-color: #c8e6c9;
+            color: #2e7d32;
+        }
+        .disconnected {
+            background-color: #ffcdd2;
+            color: #c62828;
+        }
+        .system-message {
+            background-color: #fff3e0;
+            color: #e65100;
+            text-align: center;
+            margin: 10px 20%;
+        }
+        .affirmation-message {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            margin: 10px 10%;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #2e7d32;
+        }
+        .delete-btn {
+            padding: 5px 10px;
+            background-color: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .delete-btn:hover {
+            background-color: #cc0000;
+        }
+        .chat-title {
+            flex-grow: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="control-panel">
+        <div>
+            <input type="text" id="token-input" placeholder="输入你的token" style="width: 300px; padding: 10px; margin: 10px;">
+            <button onclick="connectWebSocket()">连接</button>
+        </div>
+        <div id="connection-status" class="status disconnected">未连接</div>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <button onclick="createNewChat()" style="padding: 10px;">新建对话</button>
+            <div class="chat-list" id="chat-list">
+                <!-- 对话列表将在这里动态生成 -->
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div id="chat-container"></div>
+            <div style="text-align: center;">
+                <input type="text" id="message-input" placeholder="输入消息..." disabled>
+                <button id="send-button" onclick="sendMessage()" disabled>发送</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let currentSessionId = null;
+        const chatContainer = document.getElementById('chat-container');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        const connectionStatus = document.getElementById('connection-status');
+        const chatList = document.getElementById('chat-list');
+
+        async function createNewChat() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert('请先连接WebSocket');
+                return;
+            }
+            
+            try {
+                // 调用后端创建新会话
+                const response = await fetch(`/api/v1/chat/session`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${document.getElementById('token-input').value}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('创建会话失败');
+                }
+                
+                const chat = await response.json();
+                
+                // 创建新的对话项
+                const chatItem = createChatItem(chat);
+                chatList.appendChild(chatItem);
+                
+                // 切换到新对话
+                switchChat(chat.session_id);
+                
+            } catch (error) {
+                console.error('创建对话失败:', error);
+                addMessage(`系统：创建对话失败 - ${error.message}`, 'system');
+            }
+        }
+
+        function switchChat(sessionId) {
+            // 如果是当前对话，不做任何操作
+            if (sessionId === currentSessionId) {
+                return;
+            }
+
+            // 关闭现有连接
+            if (ws) {
+                ws.close();
+            }
+
+            // 更新当前会话ID
+            currentSessionId = sessionId;
+            
+            // 更新UI
+            document.querySelectorAll('.chat-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.dataset.sessionId === sessionId) {
+                    item.classList.add('active');
+                }
+            });
+
+            // 先加载历史对话
+            loadChatHistory(sessionId).then(() => {
+                // 加载完历史后再建立新的WebSocket连接
+                ws = new WebSocket(`ws://${window.location.host}/api/v1/chat/ws/${sessionId}`);
+                setupWebSocket(ws);
+            });
+        }
+
+        // 将WebSocket事件处理提取为单独的函数
+        function setupWebSocket(ws) {
+            ws.onopen = function() {
+                console.log('WebSocket连接已建立');
+                // 发送认证token
+                ws.send(document.getElementById('token-input').value);
+            };
+
+            ws.onmessage = function(event) {
+                console.log('收到消息:', event.data);
+                
+                // 处理认证相关的消息
+                if (event.data.includes('认证失败')) {
+                    updateConnectionStatus(false, event.data);
+                    addMessage(`系统：${event.data}`, 'system');
+                    ws.close();
+                    return;
+                }
+                
+                // 处理认证成功消息
+                if (event.data === '认证成功') {
+                    updateConnectionStatus(true, '已连接');
+                    addMessage('系统：认证成功', 'system');
+                    // 加载现有对话
+                    loadExistingChats();
+                    return;
+                }
+                
+                // 正常消息处理
+                addMessage(event.data, 'bot');
+            };
+
+            ws.onerror = function(error) {
+                console.error('WebSocket错误:', error);
+                updateConnectionStatus(false, '连接错误');
+                addMessage('系统：连接发生错误', 'system');
+            };
+
+            ws.onclose = function() {
+                console.log('WebSocket连接已关闭');
+                updateConnectionStatus(false);
+                addMessage('系统：连接已关闭', 'system');
+            };
+        }
+
+        function updateConnectionStatus(connected, message = null) {
+            messageInput.disabled = !connected;
+            sendButton.disabled = !connected;
+            connectionStatus.textContent = message || (connected ? '已连接' : '未连接');
+            connectionStatus.className = `status ${connected ? 'connected' : 'disconnected'}`;
+        }
+
+        function addMessage(message, type = 'bot') {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}-message`;
+            messageDiv.textContent = message;
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // 修改连接函数
+        async function connectWebSocket() {
+            const token = document.getElementById('token-input').value;
+            if (!token) {
+                alert('请输入token');
+                return;
+            }
+
+            // 禁用连接按钮，避免重复点击
+            document.querySelector('button[onclick="connectWebSocket()"]').disabled = true;
+            
+            try {
+                // 创建默认会话
+                const response = await fetch(`/api/v1/chat/session`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('创建会话失败');
+                }
+                
+                const data = await response.json();
+                const defaultSessionId = data.session_id;
+                
+                // 创建WebSocket连接
+                ws = new WebSocket(`ws://${window.location.host}/api/v1/chat/ws/${defaultSessionId}`);
+                setupWebSocket(ws);
+                
+            } catch (error) {
+                console.error('连接错误:', error);
+                updateConnectionStatus(false, '连接失败');
+                addMessage(`系统：连接失败 - ${error.message}`, 'system');
+                // 重新启用连接按钮
+                document.querySelector('button[onclick="connectWebSocket()"]').disabled = false;
+            }
+        }
+
+        function sendMessage() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert('请先连接WebSocket');
+                return;
+            }
+
+            if (!currentSessionId) {
+                alert('请先创建或选择一个对话');
+                return;
+            }
+
+            const message = messageInput.value;
+            if (message) {
+                ws.send(message);
+                addMessage(message, 'user');
+                messageInput.value = '';
+            }
+        }
+
+        // 添加回车发送功能
+        messageInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !messageInput.disabled) {
+                sendMessage();
+            }
+        });
+
+        // 添加删除对话的函数
+        async function deleteChat(event, sessionId) {
+            event.stopPropagation(); // 阻止事件冒泡
+            
+            if (!confirm('确定要删除这个对话吗？')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/v1/chat/session/${sessionId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${document.getElementById('token-input').value}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('删除对话失败');
+                }
+                
+                // 从列表中移除对话项
+                const chatItem = document.querySelector(`.chat-item[data-session-id="${sessionId}"]`);
+                if (chatItem) {
+                    chatItem.remove();
+                }
+                
+                // 如果删除的是当前对话，清空聊天容器
+                if (sessionId === currentSessionId) {
+                    chatContainer.innerHTML = '';
+                    currentSessionId = null;
+                    addMessage('系统：当前对话已删除', 'system');
+                }
+                
+            } catch (error) {
+                console.error('删除对话失败:', error);
+                addMessage(`系统：删除对话失败 - ${error.message}`, 'system');
+            }
+        }
+
+        // 修改创建对话项的函数
+        function createChatItem(chat) {
+            const chatItem = document.createElement('div');
+            chatItem.className = 'chat-item';
+            chatItem.dataset.sessionId = chat.session_id;
+            
+            const titleSpan = document.createElement('span');
+            titleSpan.className = 'chat-title';
+            
+            // 使用第一条用户消息作为标题
+            let title = '新对话';
+            if (chat.messages && chat.messages.length > 0) {
+                // 查找第一条用户消息
+                const firstUserMsg = chat.messages.find(msg => msg.role === 'user');
+                if (firstUserMsg) {
+                    title = firstUserMsg.content.substring(0, 20) + (firstUserMsg.content.length > 20 ? '...' : '');
+                }
+            }
+            titleSpan.textContent = title;
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.textContent = '删除';
+            deleteBtn.onclick = (e) => deleteChat(e, chat.session_id);
+            
+            chatItem.appendChild(titleSpan);
+            chatItem.appendChild(deleteBtn);
+            chatItem.onclick = () => switchChat(chat.session_id);
+            
+            return chatItem;
+        }
+
+        // 修改加载对话列表的函数
+        async function loadExistingChats() {
+            try {
+                const response = await fetch('/api/v1/chat/sessions', {
+                    headers: {
+                        'Authorization': `Bearer ${document.getElementById('token-input').value}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('获取对话列表失败');
+                }
+                
+                const chats = await response.json();
+                console.log('加载的对话列表:', chats); // 添加调试日志
+                
+                // 清空现有列表
+                chatList.innerHTML = '';
+                
+                // 添加所有对话到列表
+                chats.forEach((chat) => {
+                    const chatItem = createChatItem(chat);
+                    chatList.appendChild(chatItem);
+                });
+                
+            } catch (error) {
+                console.error('加载对话列表失败:', error);
+                addMessage(`系统：加载对话列表失败 - ${error.message}`, 'system');
+            }
+        }
+
+        async function loadChatHistory(sessionId) {
+            try {
+                const response = await fetch(`/api/v1/chat/sessions/${sessionId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${document.getElementById('token-input').value}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('获取对话历史失败');
+                }
+                
+                const chat = await response.json();
+                console.log('加载的历史消息:', chat); // 添加调试日志
+                
+                // 清空聊天容器
+                chatContainer.innerHTML = '';
+                
+                // 显示历史消息
+                if (chat.messages && chat.messages.length > 0) {
+                    chat.messages.forEach(msg => {
+                        console.log('处理消息:', msg); // 添加调试日志
+                        if (msg.role === 'user') {
+                            addMessage(msg.content, 'user');
+                        } else if (msg.role === 'assistant') {
+                            addMessage(msg.content, 'bot');
+                        }
+                    });
+                    addMessage('系统：已加载历史对话', 'system');
+                } else {
+                    addMessage('系统：这是一个新对话', 'system');
+                }
+                
+            } catch (error) {
+                console.error('加载对话历史失败:', error);
+                addMessage(`系统：加载对话历史失败 - ${error.message}`, 'system');
+            }
+        }
+
+        // 初始化连接状态
+        updateConnectionStatus(false);
+    </script>
+</body>
+</html> 
