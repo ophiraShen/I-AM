@@ -6,6 +6,7 @@ from langchain_core.messages import AIMessage
 import asyncio
 import time
 import random
+import json
 
 from api.deps import get_db, get_current_active_user
 from app.security import verify_token
@@ -14,6 +15,7 @@ from crud.user import get_user_by_username
 from schemas.chat import ChatCreate, ChatUpdate, ChatResponse, Message
 from schemas.user import UserInDB
 from agents.chat_agent import ChatAgent
+from crud import affirmation as affirmation_crud
 
 router = APIRouter()
 chat_agent = ChatAgent()
@@ -121,13 +123,35 @@ async def chat_websocket(
                 # 处理聊天响应
                 seen_responses = set()
                 async for chunk in chat_agent.chat(message, thread_id=session_id):
-                    if isinstance(chunk, dict) and "messages" in chunk:
-                        for msg in chunk["messages"]:
-                            if (isinstance(msg, AIMessage) and 
-                                msg.content not in seen_responses):
-                                await websocket.send_text(msg.content)
-                                seen_responses.add(msg.content)
-                                full_response = msg.content
+                    if isinstance(chunk, dict):
+                        # 如果是肯定语响应，保存到数据库并通知前端
+                        if (chunk.get('route') == 'affirmation' and 
+                            chunk.get('success') and 
+                            chunk.get('data', {}).get('affirmations')):
+                            
+                            # 保存肯定语
+                            affirmation = await affirmation_crud.create_affirmation_from_agent(
+                                db=db,
+                                user=user,
+                                chat_id=chat.id,
+                                agent_response=chunk
+                            )
+                            
+                            # 发送特殊消息通知前端需要确认生成肯定语
+                            await websocket.send_text(json.dumps({
+                                "type": "affirmation_confirm",
+                                "message": "检测到可以生成肯定语，是否需要生成？",
+                                "affirmation_id": affirmation.id
+                            }))
+                        
+                        # 处理消息响应
+                        if "messages" in chunk:
+                            for msg in chunk["messages"]:
+                                if (isinstance(msg, AIMessage) and 
+                                    msg.content not in seen_responses):
+                                    await websocket.send_text(msg.content)
+                                    seen_responses.add(msg.content)
+                                    full_response = msg.content
                 
                 # 更新对话历史
                 if full_response:

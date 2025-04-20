@@ -5,7 +5,7 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(ROOT_DIR))
 from dotenv import load_dotenv
-load_dotenv(ROOT_DIR / '.env')
+load_dotenv(os.path.join(ROOT_DIR, '.env'))
 
 import yaml
 from datetime import datetime
@@ -19,7 +19,7 @@ from langgraph.graph.message import AnyMessage, add_messages
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 
-config_path = ROOT_DIR / 'backend' / 'config' / 'affirmation.yaml'
+config_path = os.path.join(ROOT_DIR, 'backend', 'config', 'affirmation.yaml')
 
 def add_log(current_log, new_log: str) -> list[str]:
     if current_log is None:
@@ -119,12 +119,12 @@ class AffirmationAgent:
                 ("system", self.insight_prompt),
                 ("human", "{conversation}")
             ])
-            generate_insight_chain = insight_prompt | self.llm.with_structured_output(InsightAnalyzer)
+            generate_insight_chain = insight_prompt | self.llm.with_structured_output(InsightAnalyzer, method="function_calling")
             insight = generate_insight_chain.invoke({"conversation": conversation_content})
             
             # 保存分析结果
             timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-            output_path = self.config['paths']['output_path'] / "insights" / f"{timestamp}.yaml"
+            output_path = os.path.join(self.config['paths']['output_path'], "insight", f"{timestamp}.yaml")
             
             with open(output_path, 'w', encoding='utf-8') as f:
                 yaml.dump({"insight": insight.as_str}, f, allow_unicode=True)
@@ -146,7 +146,7 @@ class AffirmationAgent:
                 ("system", self.generator_prompt),
                 ("human", user_message)
             ])
-            generate_affirmations_chain = generator_prompt | self.llm.with_structured_output(Affirmations)
+            generate_affirmations_chain = generator_prompt | self.llm.with_structured_output(Affirmations, method="function_calling")
             affirmations = generate_affirmations_chain.invoke(
                 {
                     "conversation": state.data["conversation"],
@@ -155,7 +155,7 @@ class AffirmationAgent:
             )
             
             # 保存生成的肯定语
-            output_path = self.config['paths']['output_path'] / "affirmations" / f"{timestamp}.yaml"
+            output_path = os.path.join(self.config['paths']['output_path'], "affirmations", f"{timestamp}.yaml")
             
             with open(output_path, 'w', encoding='utf-8') as f:
                 yaml.dump(affirmations.to_yaml_dict, f, allow_unicode=True)

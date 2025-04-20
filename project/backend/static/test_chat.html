@@ -117,6 +117,39 @@
             text-overflow: ellipsis;
             margin-right: 10px;
         }
+        /* 添加确认弹窗样式 */
+        .confirm-dialog {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        
+        /* 肯定语列表样式 */
+        .affirmations-panel {
+            position: fixed;
+            right: 20px;
+            top: 20px;
+            width: 300px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .affirmation-item {
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -145,6 +178,19 @@
         </div>
     </div>
 
+    <!-- 添加确认弹窗 -->
+    <div id="confirmDialog" class="confirm-dialog">
+        <p id="confirmMessage"></p>
+        <button onclick="confirmAffirmation()">确认</button>
+        <button onclick="cancelAffirmation()">取消</button>
+    </div>
+
+    <!-- 添加肯定语面板 -->
+    <div id="affirmationsPanel" class="affirmations-panel">
+        <h3>生成的肯定语</h3>
+        <div id="affirmationsList"></div>
+    </div>
+
     <script>
         let ws = null;
         let currentSessionId = null;
@@ -153,6 +199,7 @@
         const sendButton = document.getElementById('send-button');
         const connectionStatus = document.getElementById('connection-status');
         const chatList = document.getElementById('chat-list');
+        let currentAffirmationId = null;
 
         async function createNewChat() {
             if (!ws || ws.readyState !== WebSocket.OPEN) {
@@ -227,27 +274,39 @@
             };
 
             ws.onmessage = function(event) {
-                console.log('收到消息:', event.data);
-                
-                // 处理认证相关的消息
-                if (event.data.includes('认证失败')) {
-                    updateConnectionStatus(false, event.data);
-                    addMessage(`系统：${event.data}`, 'system');
-                    ws.close();
-                    return;
+                try {
+                    const data = JSON.parse(event.data);
+                    
+                    // 处理肯定语确认消息
+                    if (data.type === 'affirmation_confirm') {
+                        currentAffirmationId = data.affirmation_id;
+                        showConfirmDialog(data.message);
+                        return;
+                    }
+                    
+                    // 处理认证相关的消息
+                    if (data.message.includes('认证失败')) {
+                        updateConnectionStatus(false, data.message);
+                        addMessage(`系统：${data.message}`, 'system');
+                        ws.close();
+                        return;
+                    }
+                    
+                    // 处理认证成功消息
+                    if (data.message === '认证成功') {
+                        updateConnectionStatus(true, '已连接');
+                        addMessage('系统：认证成功', 'system');
+                        // 加载现有对话
+                        loadExistingChats();
+                        return;
+                    }
+                    
+                    // 正常消息处理
+                    addMessage(data.message, 'bot');
+                } catch (e) {
+                    // 如果不是JSON，当作普通消息处理
+                    addMessage(event.data, 'bot');
                 }
-                
-                // 处理认证成功消息
-                if (event.data === '认证成功') {
-                    updateConnectionStatus(true, '已连接');
-                    addMessage('系统：认证成功', 'system');
-                    // 加载现有对话
-                    loadExistingChats();
-                    return;
-                }
-                
-                // 正常消息处理
-                addMessage(event.data, 'bot');
             };
 
             ws.onerror = function(error) {
@@ -483,6 +542,61 @@
                 console.error('加载对话历史失败:', error);
                 addMessage(`系统：加载对话历史失败 - ${error.message}`, 'system');
             }
+        }
+
+        // 显示确认弹窗
+        function showConfirmDialog(message) {
+            document.getElementById('confirmMessage').textContent = message;
+            document.getElementById('confirmDialog').style.display = 'block';
+        }
+        
+        // 确认生成肯定语
+        async function confirmAffirmation() {
+            try {
+                const response = await fetch(`/api/v1/affirmation/chat/${currentAffirmationId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${document.getElementById('token-input').value}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('获取肯定语失败');
+                }
+                
+                const affirmations = await response.json();
+                displayAffirmations(affirmations);
+                
+            } catch (error) {
+                console.error('获取肯定语失败:', error);
+                addMessage(`系统：获取肯定语失败 - ${error.message}`, 'system');
+            } finally {
+                document.getElementById('confirmDialog').style.display = 'none';
+            }
+        }
+        
+        // 取消生成肯定语
+        function cancelAffirmation() {
+            document.getElementById('confirmDialog').style.display = 'none';
+        }
+        
+        // 显示肯定语列表
+        function displayAffirmations(affirmations) {
+            const container = document.getElementById('affirmationsList');
+            container.innerHTML = '';
+            
+            affirmations.forEach(affirmation => {
+                const div = document.createElement('div');
+                div.className = 'affirmation-item';
+                div.textContent = affirmation;
+                div.onclick = () => showAffirmationDetail(affirmation);
+                container.appendChild(div);
+            });
+        }
+        
+        // 显示肯定语详情
+        function showAffirmationDetail(affirmation) {
+            // 可以添加更详细的展示逻辑
+            alert(affirmation);
         }
 
         // 初始化连接状态

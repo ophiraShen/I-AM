@@ -5,7 +5,7 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(ROOT_DIR))
 from dotenv import load_dotenv
-load_dotenv(ROOT_DIR / '.env')
+load_dotenv(os.path.join(ROOT_DIR, '.env'))
 import logging
 
 logging.getLogger().setLevel(logging.INFO)
@@ -45,7 +45,7 @@ from pydantic import BaseModel, Field, ConfigDict, field_validator
 from .meditation_tts import CosyVoice2TTS
 
 
-config_path = ROOT_DIR / 'backend' / 'config' / 'meditation.yaml'
+config_path = os.path.join(ROOT_DIR, 'backend', 'config', 'meditation.yaml')
 
 #=======================================================================================
 def add_log(current_log, new_log: str) -> list[str]:
@@ -236,7 +236,7 @@ class MeditationAgent:
                 ("system", self.outline_prompt),  # 使用你已有的提示词
                 ("user", "{conversation_content}")
             ])
-            generate_meditation_outline = meditation_outline_prompt | self.llm.with_structured_output(MeditationOutline)
+            generate_meditation_outline = meditation_outline_prompt | self.llm.with_structured_output(MeditationOutline, method="function_calling")
             outline = generate_meditation_outline.invoke({"conversation_content": conversation_content})
 
             print("大纲已生成")
@@ -253,7 +253,7 @@ class MeditationAgent:
 
         {outline}""")
             ])
-            generate_meditation_script = script_prompt | self.llm.with_structured_output(MeditationScript)
+            generate_meditation_script = script_prompt | self.llm.with_structured_output(MeditationScript, method="function_calling")
             script = generate_meditation_script.invoke({"outline": state.data['outline']})
 
             print("脚本已生成")
@@ -269,11 +269,11 @@ class MeditationAgent:
                 ("system", self.tone_prompt),
                 ("user", "请为以下冥想引导词添加适当的语气标记：\n\n{script}")
             ])
-            generate_marked_script = tone_marking_prompt | self.llm.with_structured_output(MarkedMeditationScript)
+            generate_marked_script = tone_marking_prompt | self.llm.with_structured_output(MarkedMeditationScript, method="function_calling")
             marked_script = generate_marked_script.invoke({"script": state.data['script']})
             marked_script_dict = marked_script.to_yaml_dict()
             
-            output_path = self.config['paths']['script_output_path'] / f"{timestamp}.yaml"
+            output_path = os.path.join(self.config['paths']['output_path'], "meditation", "script", f"{timestamp}.yaml")
             with open(output_path, 'w', encoding='utf-8') as f:
                 yaml.dump(marked_script_dict, f, indent=2, allow_unicode=True, sort_keys=False)
             
@@ -284,7 +284,7 @@ class MeditationAgent:
     def create_tts(self, state: NodeResult) -> NodeResult:
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
         try:
-            output_path = self.config['paths']['tts_output_path'] / f"{timestamp}.wav"
+            output_path = os.path.join(self.config['paths']['output_path'], "tts", "meditation", f"{timestamp}.wav")
             
             self.tts.generate_audio(
                 texts=state.data,

@@ -97,4 +97,44 @@ async def delete_affirmation(
     if not affirmation:
         raise NotFoundException("Affirmation not found")
     await db.delete(affirmation)
-    await db.commit() 
+    await db.commit()
+
+async def create_affirmation_from_agent(
+    db: AsyncSession,
+    user: User,
+    chat_id: int,
+    agent_response: dict
+) -> Affirmation:
+    """从Agent响应创建肯定语记录"""
+    try:
+        # 验证对话存在且属于当前用户
+        chat_result = await db.execute(
+            select(Chat).filter(
+                Chat.id == chat_id,
+                Chat.user_id == user.id
+            )
+        )
+        chat = chat_result.scalar_one_or_none()
+        if not chat:
+            raise NotFoundException("Chat not found")
+
+        # 从agent响应中提取肯定语
+        if not agent_response.get('data') or not agent_response['data'].get('affirmations'):
+            raise BadRequestException("No affirmations in agent response")
+
+        # 创建肯定语记录
+        db_affirmation = Affirmation(
+            user_id=user.id,
+            chat_id=chat_id,
+            content=agent_response['data']['affirmations']
+        )
+        
+        db.add(db_affirmation)
+        await db.commit()
+        await db.refresh(db_affirmation)
+        
+        return db_affirmation
+        
+    except Exception as e:
+        await db.rollback()
+        raise BadRequestException(f"Failed to create affirmation: {str(e)}") 
