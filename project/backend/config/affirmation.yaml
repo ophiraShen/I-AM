@@ -1,0 +1,11 @@
+# 路径配置
+paths:
+  project_root: "/root/autodl-tmp/I-AM/project/backend"
+  agents_path: "/root/autodl-tmp/I-AM/project/backend/agents"
+  prompts_path: "/root/autodl-tmp/I-AM/project/backend/agents/prompts/affirmation"
+  output_path: "/root/autodl-tmp/I-AM/project/backend/agents/output/affirmation"
+  
+# 提示词文件
+prompts:
+  insight: "/root/autodl-tmp/I-AM/project/backend/agents/prompts/affirmation/affiramtion_insight_prompt.txt"
+  generator: "/root/autodl-tmp/I-AM/project/backend/agents/prompts/affirmation/affirmation_generator_promot.txt"

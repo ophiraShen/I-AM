@@ -1,0 +1,17 @@
+prompts:
+  speech:
+    female1: "/root/autodl-tmp/I-AM/project/backend/agents/resources/meditation/vocals/female1_[12sec].wav"
+    female2: "/root/autodl-tmp/I-AM/project/backend/agents/resources/meditation/vocals/female2_[16sec].wav"
+    male1: "/root/autodl-tmp/I-AM/project/backend/agents/resources/meditation/vocals/male1_[12sec].wav"
+    male2: "/root/autodl-tmp/I-AM/project/backend/agents/resources/meditation/vocals/male2_[16sec].wav"
+  
+  text:
+    female1: "我不为过往感到懊悔，也不为明天感到焦虑，我珍惜着此时此刻的完整和真实。"
+    female2: "你好，我是雅丽丝，这是古老传承的显化冥想，你可以运用这波冥想，来帮助自己吸引显化，吸引你的梦想称为现实。"
+    male1: "深深地吸气，缓缓地呼气，感受这具身体是否有疲劳，或者沉重的感觉。"
+    male2: "现在你可以熄灭灯光，将自己调整到最舒服的平躺姿势，让我带着你，通过今天的睡前放松，进入沉睡的梦想。"
+
+background_music:
+  bmusic_01: "/root/autodl-tmp/I-AM/project/backend/agents/resources/meditation/background_music/bmusic_01.wav"
+  bmusic_02: "/root/autodl-tmp/I-AM/project/backend/agents/resources/meditation/background_music/bmusic_02.wav"
+  bmusic_03: "/root/autodl-tmp/I-AM/project/backend/agents/resources/meditation/background_music/bmusic_03.wav"

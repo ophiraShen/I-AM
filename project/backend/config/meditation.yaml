@@ -1,0 +1,21 @@
+# 路径配置
+paths:
+  project_root: "/root/autodl-tmp/I-AM/project/backend"
+  agents_path: "/root/autodl-tmp/I-AM/project/backend/agents"
+  prompts_path: "/root/autodl-tmp/I-AM/project/backend/agents/prompts/meditation"
+  output_path: "/root/autodl-tmp/I-AM/project/backend/agents/output"
+  outline_output_path: "/root/autodl-tmp/I-AM/project/backend/agents/output/meditation/outline"
+  script_output_path: "/root/autodl-tmp/I-AM/project/backend/agents/output/meditation/script"
+  tts_output_path: "/root/autodl-tmp/I-AM/project/backend/agents/output/meditation/tts"
+
+# TTS 配置
+tts:
+  tts_model_path: "/root/autodl-fs/cosyvoice/pretrained_models/CosyVoice2-0.5B"
+  tts_resources_config: "/root/autodl-tmp/I-AM/project/backend/agents/resources/meditation/zero_shot.yaml"
+  
+
+# 提示词文件
+prompts:
+  outline: "/root/autodl-tmp/I-AM/project/backend/agents/prompts/meditation/meditation_outline_promot.txt"
+  script: "/root/autodl-tmp/I-AM/project/backend/agents/prompts/meditation/meditaiton_script_prompt.txt"
+  tone: "/root/autodl-tmp/I-AM/project/backend/agents/prompts/meditation/meditation_tone_prompt.txt"

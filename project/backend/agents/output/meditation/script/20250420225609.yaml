@@ -1,0 +1,58 @@
+sequences:
+- id: 0
+  text: Welcome to this short affirmation meditation designed to boost your confidence
+    before your interview.
+  duration: 2
+- id: 1
+  text: Find a comfortable position, sitting or lying down, and gently close your
+    eyes.
+  duration: 2
+- id: 2
+  text: Begin by taking a deep breath in through your nose, filling your lungs completely[breath].
+  duration: 2
+- id: 3
+  text: Hold it for a moment, then slowly exhale through your mouth, releasing any
+    tension[sigh].
+  duration: 2
+- id: 4
+  text: With each breath, feel your body relaxing more and more, sinking into the
+    present moment[breath].
+  duration: 2
+- id: 5
+  text: Now, let’s bring our focus to the affirmations that will empower you for your
+    interview.
+  duration: 2
+- id: 6
+  text: 'Repeat after me: <strong>I am confident and ready to showcase my best self
+    in the interview.</strong>'
+  duration: 2
+- id: 7
+  text: <strong>I am well-prepared and handle every question with ease and clarity.</strong>
+  duration: 2
+- id: 8
+  text: <strong>My skills and experience shine, making me stand out in the interview.</strong>
+  duration: 2
+- id: 9
+  text: <strong>I remain calm, focused, and professional throughout the entire process.</strong>
+  duration: 2
+- id: 10
+  text: <strong>The interviewer is impressed by my performance, and I succeed with
+    ease.</strong>
+  duration: 2
+- id: 11
+  text: Take a moment to let these affirmations sink in, feeling their truth within
+    you[breath].
+  duration: 2
+- id: 12
+  text: Now, gently bring your awareness back to your breath, inhaling deeply once
+    more[breath].
+  duration: 2
+- id: 13
+  text: Exhale slowly, feeling gratitude for this time you’ve dedicated to yourself[sigh].
+  duration: 2
+- id: 14
+  text: When you’re ready, wiggle your fingers and toes, and slowly open your eyes.
+  duration: 2
+- id: 15
+  text: Carry this confidence with you as you step into your interview with assurance.
+  duration: 2

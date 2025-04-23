@@ -3,6 +3,7 @@
 *.pyo
 *.pyd
 __pycache__/
+.ipynb_checkpoints/
 
 # 虚拟环境
 env/
@@ -52,3 +53,17 @@ build/
 # 其他
 ztmp/
 saved_code/
+CosyVoice/
+project/backend/agents/jupyter/output/
+*.wav
+
+# 模型
+i_am-20241217-013701/
+*.safetensors
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.ckpt
+
+
