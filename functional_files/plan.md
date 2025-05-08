@@ -1,11 +1,7 @@
 # 吸引力法则与显化App开发计划
 
 ## 项目概述
-<<<<<<< HEAD
-开发一款基于AI的吸引力法则与显化指导应用，帮助用户通过科学方法实现个人目标。
-=======
 开发一款基于AI的吸引力法则与显化指导的对话机器人，帮助用户通过科学方法实现个人目标。
->>>>>>> fastapi
 
 ## 时间规划：30天（每天16小时）
 - 项目启动：2024年12月4日
@@ -49,11 +45,7 @@
 ```
 
 ### 模型训练与优化 (12.10-12.14)
-<<<<<<< HEAD
-- 基座模型：GLM-Edge-1.5B-Chat(glm-edge-1.5b-chat-gguf)
-=======
 - 基座模型：glm_4_9b_chat
->>>>>>> fastapi
 - 训练方法：LoRA微调
 - 评估指标：
   - 回复相关性
@@ -77,42 +69,10 @@
 
 #### 核心功能开发 (12.17-12.21)
 - 后端开发：
-<<<<<<< HEAD
-```python
-class ManifestationEngine:
-    def __init__(self):
-        self.model = load_model()
-        self.user_history = UserHistoryTracker()
-        self.progress_analyzer = ProgressAnalyzer()
-        self.content_moderator = ContentModerator()
-    
-    async def generate_guidance(self, user_input, user_context):
-        # 内容审核
-        safe_input = self.content_moderator.check(user_input)
-        
-        # 生成回复
-        response = await self.model.generate(
-            user_input=safe_input,
-            history=self.user_history.get_recent(user_id),
-            context=user_context
-        )
-        
-        # 进展分析和建议调整
-        adjusted_response = self.progress_analyzer.adjust_guidance(response)
-        return adjusted_response
-
-class ProgressTracker:
-    def track_daily_progress(self, user_id):
-        # 追踪显化目标完成度
-        # 生成进度报告
-        # 调整建议策略
-```
-=======
   - 使用 LangGraph 构建对话机器人
   - 日记系统
   - 冥想引导系统
   - 进度追踪系统
->>>>>>> fastapi
 
 - 前端开发(Flutter)：
   - 流畅的对话界面

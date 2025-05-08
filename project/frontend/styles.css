@@ -1,0 +1,717 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+:root {
+    --primary-color: #c084fc;
+    --primary-dark: #a855f7;
+    --secondary-color: #f6f2ff;
+    --text-color: #ffffff;
+    --bg-color: #0f172a;
+    --bubble-color: rgba(216, 180, 254, 0.15);
+    --star-color: rgba(255, 255, 255, 0.8);
+    --teal-200: #99f6e4;
+    --teal-300: #5eead4;
+    --purple-300: #d8b4fe;
+    --pink-300: #f9a8d4;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    height: 100vh;
+    overflow: hidden;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    position: relative;
+}
+
+/* 星星背景 */
+.stars-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -2;
+    overflow: hidden;
+}
+
+.stars-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: radial-gradient(var(--star-color) 1px, transparent 1px);
+    background-size: 70px 70px;
+    animation: twinkle 15s linear infinite;
+}
+
+.stars-container::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: radial-gradient(var(--star-color) 1px, transparent 1px);
+    background-size: 50px 50px;
+    background-position: 25px 25px;
+    animation: twinkle 20s linear infinite;
+}
+
+@keyframes twinkle {
+    0%, 100% {
+        opacity: 0.2;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(1.3);
+        filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.8));
+    }
+}
+
+/* 背景星云和雾气效果 */
+.stars-container:before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(
+        ellipse at center,
+        rgba(153, 246, 228, 0.1) 0%,
+        rgba(216, 180, 254, 0.1) 25%,
+        rgba(249, 168, 212, 0.1) 50%,
+        rgba(216, 180, 254, 0.1) 75%,
+        rgba(153, 246, 228, 0.1) 100%
+    );
+    z-index: -1;
+    animation: nebula 20s ease-in-out infinite;
+}
+
+/* 泡泡动画 */
+.bubbles-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    overflow: hidden;
+}
+
+.bubble {
+    position: absolute;
+    bottom: -50px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--bubble-color);
+    box-shadow: 0 0 10px 0 rgba(216, 180, 254, 0.3);
+    animation: float linear infinite;
+}
+
+@keyframes float {
+    0% {
+        transform: translateY(0px) rotate(0deg);
+        opacity: 0.2;
+    }
+    50% {
+        transform: translateY(-20px) rotate(5deg);
+        opacity: 0.6;
+    }
+    100% {
+        transform: translateY(-100vh) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+.container {
+    display: flex;
+    height: 100vh;
+    width: 100%;
+    position: relative;
+    z-index: 1;
+}
+
+/* 左侧聊天区域 */
+.chat-container {
+    flex: 7;
+    display: flex;
+    flex-direction: column;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 0 20px rgba(153, 246, 228, 0.15);
+    height: 100%;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.chat-header {
+    padding: 15px 20px;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+    color: white;
+    text-align: center;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+}
+
+.chat-header h1 {
+    font-size: 1.8rem;
+    font-weight: 500;
+    margin-bottom: 5px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    background: linear-gradient(to right, var(--teal-200), var(--purple-300), var(--teal-200));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: pulse 8s infinite ease-in-out;
+}
+
+.header-description {
+    font-size: 0.95rem;
+    opacity: 0.9;
+    font-weight: 300;
+}
+
+.chat-messages {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.message {
+    max-width: 80%;
+    padding: 12px 16px;
+    border-radius: 18px;
+    margin: 2px 0;
+    line-height: 1.5;
+    position: relative;
+    word-wrap: break-word;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transform-origin: bottom;
+    animation: message-appear 0.3s ease-out;
+}
+
+@keyframes message-appear {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.user-message {
+    align-self: flex-end;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+    color: white;
+    border-bottom-right-radius: 4px;
+    filter: drop-shadow(0 0 4px rgba(153, 246, 228, 0.5));
+}
+
+.bot-message {
+    align-self: flex-start;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-color);
+    border-bottom-left-radius: 4px;
+    border-left: 2px solid var(--teal-200);
+}
+
+.chat-input-container {
+    padding: 15px;
+    display: flex;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.chat-input-container textarea {
+    flex: 1;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    padding: 12px 15px;
+    resize: none;
+    outline: none;
+    font-size: 0.95rem;
+    transition: all 0.3s;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    color: var(--text-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.chat-input-container textarea:focus {
+    border-color: var(--teal-200);
+    box-shadow: 0 0 0 2px rgba(153, 246, 228, 0.2);
+}
+
+.chat-input-container button {
+    margin-left: 10px;
+    padding: 0 20px;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+    color: white;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 2px 8px rgba(153, 246, 228, 0.2);
+    filter: drop-shadow(0 0 4px rgba(153, 246, 228, 0.4));
+}
+
+.chat-input-container button:hover {
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-color) 100%);
+    transform: translateY(-2px);
+    filter: drop-shadow(0 0 8px rgba(153, 246, 228, 0.6));
+}
+
+/* 右侧存储区域 */
+.storage-container {
+    flex: 3;
+    display: flex;
+    flex-direction: column;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    height: 100%;
+    overflow: hidden;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.affirmation-container, .meditation-container {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+}
+
+.affirmation-container h2, .meditation-container h2 {
+    font-size: 1.2rem;
+    margin-bottom: 15px;
+    background: linear-gradient(to right, var(--teal-200), var(--purple-300));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: center;
+    filter: drop-shadow(0 0 3px rgba(153, 246, 228, 0.5));
+}
+
+.affirmation-list, .meditation-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* 肯定语组样式 */
+.affirmation-group {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+    margin-bottom: 15px;
+    overflow: hidden;
+    transition: all 0.3s;
+    border-left: 3px solid var(--teal-200);
+    animation: pulse 8s infinite ease-in-out;
+}
+
+.affirmation-group:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(153, 246, 228, 0.2);
+}
+
+.affirmation-title-bar {
+    padding: 12px 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background-color 0.2s;
+}
+
+.affirmation-title-bar:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.affirmation-title {
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+.toggle-icon {
+    color: var(--teal-200);
+    transition: transform 0.2s;
+}
+
+.affirmation-content {
+    padding: 15px;
+    max-height: 300px;
+    overflow-y: auto;
+    transition: all 0.3s ease;
+}
+
+.affirmation-content.collapsed {
+    max-height: 0 !important;
+    padding-top: 0;
+    padding-bottom: 0;
+    overflow: hidden;
+}
+
+.affirmation-text {
+    margin-bottom: 10px;
+    line-height: 1.5;
+    padding-left: 10px;
+    border-left: 3px solid var(--teal-200);
+    position: relative;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 10px 15px;
+    border-radius: 5px;
+    color: var(--text-color);
+}
+
+.affirmation-text:last-child {
+    margin-bottom: 0;
+}
+
+/* 冥想音频组样式 */
+.meditation-group {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+    margin-bottom: 15px;
+    overflow: hidden;
+    transition: all 0.3s;
+    border-left: 3px solid var(--teal-200);
+    animation: pulse-slow 10s infinite ease-in-out;
+}
+
+.meditation-group:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(153, 246, 228, 0.2);
+}
+
+.meditation-title-bar {
+    padding: 12px 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background-color 0.2s;
+}
+
+.meditation-title-bar:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.meditation-title {
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+.meditation-content {
+    padding: 15px;
+    max-height: 100px;
+    overflow-y: auto;
+    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.meditation-content.collapsed {
+    max-height: 0 !important;
+    padding-top: 0;
+    padding-bottom: 0;
+    overflow: hidden;
+}
+
+/* 确认弹窗 */
+.confirm-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(10px);
+}
+
+.modal-content {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 25px;
+    border-radius: 15px;
+    width: 350px;
+    max-width: 90%;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    animation: modal-appear 0.3s ease-out;
+    border-top: 5px solid var(--teal-200);
+}
+
+@keyframes modal-appear {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-content h3 {
+    margin-bottom: 20px;
+    font-size: 1.2rem;
+    color: var(--text-color);
+    background: linear-gradient(to right, var(--teal-200), var(--purple-300));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+.modal-buttons button {
+    padding: 8px 20px;
+    border-radius: 20px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: all 0.3s;
+}
+
+#confirm-yes {
+    background: linear-gradient(135deg, var(--teal-200) 0%, var(--primary-color) 100%);
+    color: white;
+    filter: drop-shadow(0 0 4px rgba(153, 246, 228, 0.4));
+}
+
+#confirm-yes:hover {
+    filter: drop-shadow(0 0 8px rgba(153, 246, 228, 0.6));
+    transform: translateY(-2px);
+}
+
+#confirm-no {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-color);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+#confirm-no:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
+}
+
+/* 进度弹窗 */
+.progress-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(10px);
+}
+
+.progress-bar-container {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    margin-top: 15px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--teal-200), var(--purple-300), var(--pink-300));
+    background-size: 200% 100%;
+    animation: gradient-move 4s ease infinite;
+    transition: width 0.3s ease;
+    border-radius: 4px;
+}
+
+@keyframes gradient-move {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+/* 消息加载动画 */
+.typing-indicator {
+    align-self: flex-start;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 12px 16px;
+    border-radius: 18px;
+    border-bottom-left-radius: 4px;
+    margin: 2px 0;
+    display: flex;
+    align-items: center;
+    border-left: 2px solid var(--teal-200);
+}
+
+.typing-indicator span {
+    height: 8px;
+    width: 8px;
+    background-color: var(--teal-200);
+    border-radius: 50%;
+    display: inline-block;
+    margin: 0 2px;
+    animation: bounce 1.3s linear infinite;
+}
+
+.typing-indicator span:nth-child(2) {
+    animation-delay: 0.15s;
+}
+
+.typing-indicator span:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+@keyframes bounce {
+    0%, 60%, 100% {
+        transform: translateY(0);
+    }
+    30% {
+        transform: translateY(-4px);
+    }
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* 音频播放器样式 */
+.audio-player {
+    width: 100%;
+    border-radius: 30px;
+    height: 36px;
+    outline: none;
+}
+
+.audio-player::-webkit-media-controls-panel {
+    background: rgba(153, 246, 228, 0.1);
+}
+
+.audio-player::-webkit-media-controls-play-button {
+    background-color: rgba(153, 246, 228, 0.2);
+    border-radius: 50%;
+}
+
+.audio-player::-webkit-media-controls-current-time-display,
+.audio-player::-webkit-media-controls-time-remaining-display {
+    color: white;
+}
+
+/* 慢脉动动画 */
+@keyframes pulse-slow {
+    0%, 100% {
+        opacity: 0.8;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.02);
+    }
+}
+
+/* 星云动画 */
+@keyframes nebula {
+    0% {
+        opacity: 0.3;
+        transform: scale(1) rotate(0deg);
+    }
+    50% {
+        opacity: 0.5;
+        transform: scale(1.1) rotate(3deg);
+    }
+    100% {
+        opacity: 0.3;
+        transform: scale(1) rotate(0deg);
+    }
+}
+
+/* 星星样式 */
+.star {
+    position: absolute;
+    background-color: white;
+    border-radius: 50%;
+    filter: drop-shadow(0 0 6px rgba(153, 246, 228, 0.8));
+    animation: twinkle 3s ease-in-out infinite;
+}
+
+@keyframes twinkle {
+    0%, 100% {
+        opacity: 0.2;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(1.3);
+        filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.8));
+    }
+}

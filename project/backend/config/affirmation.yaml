@@ -3,7 +3,9 @@ paths:
   project_root: "/root/autodl-tmp/I-AM/project/backend"
   agents_path: "/root/autodl-tmp/I-AM/project/backend/agents"
   prompts_path: "/root/autodl-tmp/I-AM/project/backend/agents/prompts/affirmation"
-  output_path: "/root/autodl-tmp/I-AM/project/backend/agents/output/affirmation"
+  output_path: "/root/autodl-tmp/I-AM/project/backend/output/affirmation"
+  insight_output_path: "/root/autodl-tmp/I-AM/project/backend/output/affirmation/insight"
+  affirmations_output_path: "/root/autodl-tmp/I-AM/project/backend/output/affirmation/affirmations"
   
 # 提示词文件
 prompts:

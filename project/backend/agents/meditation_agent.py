@@ -7,6 +7,7 @@ sys.path.append(str(ROOT_DIR))
 from dotenv import load_dotenv
 load_dotenv(os.path.join(ROOT_DIR, '.env'))
 import logging
+import uuid
 
 logging.getLogger().setLevel(logging.INFO)
 
@@ -40,52 +41,54 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import AnyMessage, add_messages
+from langgraph.checkpoint.memory import MemorySaver
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 
+from .llm import get_llm
+from .models import OverallState
 from .meditation_tts import CosyVoice2TTS
 
 
 config_path = os.path.join(ROOT_DIR, 'backend', 'config', 'meditation.yaml')
 
 #=======================================================================================
-def add_log(current_log, new_log: str) -> list[str]:
-    if current_log is None:
-        return [new_log]
-    elif isinstance(current_log, list):
-        return current_log + [new_log]
-    elif isinstance(current_log, str):
-        return [current_log, new_log]
-    else:
-        return [new_log]
+# def add_log(current_log, new_log: str) -> list[str]:
+#     if current_log is None:
+#         return [new_log]
+#     elif isinstance(current_log, list):
+#         return current_log + [new_log]
+#     elif isinstance(current_log, str):
+#         return [current_log, new_log]
+#     else:
+#         return [new_log]
 
-class OverallState(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+# class OverallState(BaseModel):
+#     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    messages: List[AnyMessage] = Field(default_factory=list, title="对话列表")
-    route: Literal["diary", "meditation", "normal_chat"] = Field(default="normal_chat", title="当前路由")
-    log: List[str] = Field(default_factory=list, title="日志列表")
+#     messages: List[AnyMessage] = Field(default_factory=list, title="对话列表")
+#     route: Literal["diary", "meditation", "normal_chat"] = Field(default="normal_chat", title="当前路由")
+#     log: List[str] = Field(default_factory=list, title="日志列表")
 
-    @field_validator('log', mode='before')
-    def validate_log(cls, v, info):
-        if v is None or (isinstance(v, list) and len(v) == 0):
-            return []
-        if 'log' in info.data:
-            return add_log(info.data['log'], v)
-        return [v] if isinstance(v ,str) else v
+#     @field_validator('log', mode='before')
+#     def validate_log(cls, v, info):
+#         if v is None or (isinstance(v, list) and len(v) == 0):
+#             return []
+#         if 'log' in info.data:
+#             return add_log(info.data['log'], v)
+#         return [v] if isinstance(v ,str) else v
         
 
-    @field_validator('messages', mode='before')
-    def validate_messages(cls, v, info):
-        if 'messages' in info.data:
-            return add_messages(info.data['messages'], v)
-        else:
-            return v if isinstance(v, list) else [v]
+#     @field_validator('messages', mode='before')
+#     def validate_messages(cls, v, info):
+#         if 'messages' in info.data:
+#             return add_messages(info.data['messages'], v)
+#         else:
+#             return v if isinstance(v, list) else [v]
 #=======================================================================================
 
 # 统一的结果状态类定义
 class NodeResult(OverallState):
     success: bool = Field(default=True, title="执行状态")
-    data: Optional[Dict[str, Any]] = Field(default=None, title="详细的传递数据")
     error: Optional[str] = Field(default=None, title="错误信息")
 
 # Outline Structure
@@ -193,27 +196,24 @@ class MarkedMeditationScript(BaseModel):
         }
 
 class MeditationAgent:
-    def __init__(self):
+    def __init__(self, model_type: str="tongyi"):
         with open(config_path, 'r') as f:
             self.config = yaml.safe_load(f)
         
         # 初始化 LLM
-        self.llm = ChatOpenAI(
-            model="deepseek-chat",
-            openai_api_key=os.getenv("DEEPSEEK_API_KEY"),
-            openai_api_base='https://api.deepseek.com'
-        )
+        self.model_type = model_type
+        self.llm = get_llm(model_type=self.model_type)
         
         # Load prompts
         outline_prompt_path = self.config['prompts']['outline']
         script_prompt_path = self.config['prompts']['script']
         tone_prompt_path = self.config['prompts']['tone']
 
-        with open(outline_prompt_path, 'r') as f:  
+        with open(outline_prompt_path, 'r', encoding='utf-8') as f:  
             self.outline_prompt = f.read()
-        with open(script_prompt_path, 'r') as f:
+        with open(script_prompt_path, 'r', encoding='utf-8') as f:
             self.script_prompt = f.read()
-        with open(tone_prompt_path, 'r') as f:
+        with open(tone_prompt_path, 'r', encoding='utf-8') as f:
             self.tone_prompt = f.read()
             
         # 初始化 TTS
@@ -222,8 +222,10 @@ class MeditationAgent:
             prompts_config_path=self.config['tts']['tts_resources_config']
         )
 
-    def create_meditation_outline(self, state: NodeResult) -> NodeResult:
+    async def create_meditation_outline(self, state: NodeResult, config) -> NodeResult:
         try:
+            # 进度通过 log 字段传递
+            log_msg = "冥想脚本生成中"
             conversation_content = ""
             for message in state.messages:
                 if isinstance(message, HumanMessage):
@@ -233,67 +235,61 @@ class MeditationAgent:
                 else:
                     continue
             meditation_outline_prompt = ChatPromptTemplate.from_messages([
-                ("system", self.outline_prompt),  # 使用你已有的提示词
+                ("system", self.outline_prompt),
                 ("user", "{conversation_content}")
             ])
             generate_meditation_outline = meditation_outline_prompt | self.llm.with_structured_output(MeditationOutline, method="function_calling")
-            outline = generate_meditation_outline.invoke({"conversation_content": conversation_content})
-
-            print("大纲已生成")
-            
-            return NodeResult(route="meditation", data={"outline": outline.as_str}, log="大纲已生成。")
+            outline = await generate_meditation_outline.ainvoke({"conversation_content": conversation_content}, config)
+            return NodeResult(route="meditation", data={"outline": outline.as_str}, log=log_msg)
         except Exception as e:
             return NodeResult(route="meditation", success=False, error=str(e), log="大纲生成失败。")
 
-    def create_meditation_script(self, state: NodeResult) -> NodeResult:
+    async def create_meditation_script(self, state: NodeResult, config) -> NodeResult:
         try:
+            log_msg = "冥想脚本生成中"
             script_prompt = ChatPromptTemplate.from_messages([
                 ("system", self.script_prompt),
-                ("user", """请根据以下冥想大纲生成详细的引导词：
-
-        {outline}""")
+                ("user", """请根据以下冥想大纲生成详细的引导词：\n\n{outline}""")
             ])
             generate_meditation_script = script_prompt | self.llm.with_structured_output(MeditationScript, method="function_calling")
-            script = generate_meditation_script.invoke({"outline": state.data['outline']})
-
-            print("脚本已生成")
-            
-            return NodeResult(route="meditation", data={"script": script.as_str}, log="脚本已生成。")
+            script = await generate_meditation_script.ainvoke({"outline": state.data['outline']}, config)
+            return NodeResult(route="meditation", data={"script": script.as_str}, log=log_msg)
         except Exception as e:
             return NodeResult(route="meditation", success=False, error=str(e), log="脚本生成失败。")
 
-    def create_marked_meditation_script(self, state: NodeResult) -> NodeResult:
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    async def create_marked_meditation_script(self, state: NodeResult, config) -> NodeResult:
         try:
+            log_msg = "冥想脚本生成中"
             tone_marking_prompt = ChatPromptTemplate.from_messages([
                 ("system", self.tone_prompt),
                 ("user", "请为以下冥想引导词添加适当的语气标记：\n\n{script}")
             ])
             generate_marked_script = tone_marking_prompt | self.llm.with_structured_output(MarkedMeditationScript, method="function_calling")
-            marked_script = generate_marked_script.invoke({"script": state.data['script']})
+            marked_script = await generate_marked_script.ainvoke({"script": state.data['script']}, config)
             marked_script_dict = marked_script.to_yaml_dict()
-            
-            output_path = os.path.join(self.config['paths']['output_path'], "meditation", "script", f"{timestamp}.yaml")
-            with open(output_path, 'w', encoding='utf-8') as f:
-                yaml.dump(marked_script_dict, f, indent=2, allow_unicode=True, sort_keys=False)
-            
-            return NodeResult(route="meditation", data=marked_script_dict, log=f"带标记的脚本已生成。path: {output_path}")
+            return NodeResult(route="meditation", data=marked_script_dict, log=log_msg)
         except Exception as e:
             return NodeResult(route="meditation", success=False, error=str(e), log="带标记的脚本生成失败。")
 
-    def create_tts(self, state: NodeResult) -> NodeResult:
+    def create_tts(self, state: NodeResult, session_id=None) -> NodeResult:
+        from datetime import datetime
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
         try:
-            output_path = os.path.join(self.config['paths']['output_path'], "tts", "meditation", f"{timestamp}.wav")
+            log_msg = "冥想音频生成中"
+            if session_id is None:
+                session_id = str(uuid.uuid4())
+            output_filename = f"{session_id}_{timestamp}.wav"
+            output_dir = os.path.join(ROOT_DIR, "backend", "static", "audio")
+            output_path = os.path.join(output_dir, output_filename)
             
             self.tts.generate_audio(
                 texts=state.data,
                 voice_type="female1",
                 background_music_type="bmusic_02",
-                output_path=str(output_path)
+                output_path=output_path
             )
-
-            return NodeResult(route="meditation", log=f"冥想音频已生成。path: {output_path}")
+            audio_url = f"/audio/{output_filename}"
+            return NodeResult(route="meditation", data={"audio_url": audio_url}, log=log_msg)
         except Exception as e:
             return NodeResult(route="meditation", success=False, error=str(e), log="冥想音频生成失败。")
 
@@ -364,4 +360,4 @@ class MeditationAgent:
         workflow.add_edge(START, "outline_node")
         workflow.add_edge("error_node", END)
 
-        return workflow.compile()
+        return workflow.compile(checkpointer=MemorySaver())

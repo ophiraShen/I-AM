@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>I-AM | 心灵伴侣</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        /* 宇宙梦幻风格覆盖样式 */
+        :root {
+            --primary-color: #c084fc;
+            --primary-dark: #a855f7;
+            --secondary-color: #f6f2ff;
+            --text-color: #ffffff;
+            --bg-color: #0f172a;
+            --bubble-color: rgba(216, 180, 254, 0.15);
+            --star-color: rgba(255, 255, 255, 0.8);
+            --teal-200: #99f6e4;
+            --teal-300: #5eead4;
+            --purple-300: #d8b4fe;
+            --pink-300: #f9a8d4;
+            --purple-500: #a855f7;
+            --purple-400: #c084fc;
+            --teal-400: #99f6e4;
+        }
+        
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+        }
+        
+        body.page-loaded {
+            opacity: 1;
+        }
+        
+        /* 星星背景 */
+        .stars-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: radial-gradient(var(--star-color) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: twinkle 15s linear infinite;
+        }
+        
+        .stars-container::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: radial-gradient(var(--star-color) 1px, transparent 1px);
+            background-size: 40px 40px;
+            background-position: 25px 25px;
+            animation: twinkle 20s linear infinite;
+        }
+        
+        /* 容器样式 */
+        .chat-container, .storage-container {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transform: translateY(20px);
+            opacity: 0;
+            transition: all 1s ease-out 0.5s;
+        }
+        
+        body.page-loaded .chat-container,
+        body.page-loaded .storage-container {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        /* 头部标题样式 */
+        .chat-header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+            border-radius: 0 0 25px 25px;
+            position: relative;
+            overflow: hidden;
+            margin: 0 20px 10px 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2), 
+                        0 0 20px rgba(153, 246, 228, 0.2);
+            padding: 8px 15px;
+        }
+        
+        .chat-header::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            right: -10px;
+            bottom: -10px;
+            background: linear-gradient(45deg, 
+                rgba(153, 246, 228, 0.1),
+                rgba(216, 180, 254, 0.1), 
+                rgba(249, 168, 212, 0.1));
+            z-index: -1;
+            filter: blur(10px);
+            animation: header-glow 10s ease-in-out infinite;
+        }
+        
+        @keyframes header-glow {
+            0%, 100% {
+                opacity: 0.5;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.8;
+                transform: scale(1.05);
+            }
+        }
+        
+        /* 星星装饰 */
+        .star-decoration {
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2399f6e4' %3E%3Cpath d='M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z'/%3E%3C/svg%3E");
+            background-size: contain;
+            opacity: 0.6;
+            filter: drop-shadow(0 0 5px rgba(153, 246, 228, 0.8));
+            z-index: 1;
+            animation: float-star 6s ease-in-out infinite;
+        }
+        
+        .star-top-left {
+            top: 10px;
+            left: 12px;
+            width: 16px;
+            height: 16px;
+            animation-delay: 0s;
+        }
+        
+        .star-top-right {
+            top: 8px;
+            right: 12px;
+            width: 12px;
+            height: 12px;
+            animation-delay: 1.5s;
+        }
+        
+        .star-bottom-left {
+            bottom: 10px;
+            left: 18px;
+            width: 12px;
+            height: 12px;
+            animation-delay: 2.3s;
+        }
+        
+        .star-bottom-right {
+            bottom: 8px;
+            right: 18px;
+            width: 14px;
+            height: 14px;
+            animation-delay: 3.1s;
+        }
+        
+        @keyframes float-star {
+            0%, 100% {
+                transform: translateY(0) rotate(0deg);
+            }
+            50% {
+                transform: translateY(-3px) rotate(10deg);
+            }
+        }
+        
+        .chat-header h1 {
+            background: linear-gradient(to right, var(--teal-200), var(--purple-300), var(--teal-200));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            animation: pulse 8s infinite ease-in-out;
+            font-family: 'STXingkai', 'STKaiti', cursive, sans-serif;
+            font-size: 1.8rem;
+            text-shadow: 0 0 8px rgba(153, 246, 228, 0.6),
+                         0 0 15px rgba(153, 246, 228, 0.4),
+                         0 0 20px rgba(153, 246, 228, 0.2);
+            letter-spacing: 2px;
+            margin-top: 2px;
+            margin-bottom: 2px;
+            position: relative;
+            display: inline-block;
+        }
+        
+        .chat-header h1::before,
+        .chat-header h1::after {
+            content: '✧';
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.2rem;
+            color: var(--teal-200);
+            opacity: 0.8;
+            text-shadow: 0 0 10px rgba(153, 246, 228, 0.8);
+            animation: star-pulse 3s infinite alternate;
+        }
+        
+        .chat-header h1::before {
+            left: -22px;
+            animation-delay: 0s;
+        }
+        
+        .chat-header h1::after {
+            right: -22px;
+            animation-delay: 1.5s;
+        }
+        
+        @keyframes star-pulse {
+            0% {
+                opacity: 0.3;
+                transform: translateY(-50%) scale(0.8);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(-50%) scale(1.2);
+            }
+        }
+        
+        .header-description {
+            font-size: 0.85rem;
+            opacity: 0.9;
+            font-weight: 300;
+            margin-top: 3px;
+            margin-bottom: 2px;
+            position: relative;
+            text-shadow: 0 0 8px rgba(153, 246, 228, 0.5);
+            letter-spacing: 1px;
+        }
+        
+        /* 消息样式 */
+        .user-message {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+            filter: drop-shadow(0 0 4px rgba(153, 246, 228, 0.5));
+        }
+        
+        .bot-message {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-left: 2px solid var(--teal-200);
+        }
+        
+        /* 输入框样式 */
+        .chat-input-container textarea {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: var(--text-color);
+        }
+        
+        .chat-input-container button {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+            filter: drop-shadow(0 0 4px rgba(153, 246, 228, 0.4));
+        }
+        
+        .chat-input-container button:hover {
+            filter: drop-shadow(0 0 8px rgba(153, 246, 228, 0.6));
+            transform: translateY(-2px);
+        }
+        
+        /* 标题样式 */
+        .affirmation-container h2, .meditation-container h2 {
+            background: linear-gradient(to right, var(--teal-200), var(--purple-300));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            filter: drop-shadow(0 0 3px rgba(153, 246, 228, 0.5));
+        }
+        
+        /* 卡片样式 */
+        .affirmation-group, .meditation-group {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-left: 3px solid var(--teal-200);
+            animation: pulse 8s infinite ease-in-out;
+        }
+        
+        /* 音频播放器样式 */
+        .audio-player {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        /* 弹窗样式 */
+        .modal-content {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 5px solid var(--teal-200);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .modal-content h3 {
+            background: linear-gradient(to right, var(--teal-200), var(--purple-300));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin: 5px 0 20px;
+            font-size: 1.3rem;
+            font-weight: 500;
+            letter-spacing: 1px;
+            text-shadow: 0 0 8px rgba(153, 246, 228, 0.4);
+            display: inline-block;
+            position: relative;
+        }
+        
+        .modal-content h3::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 25%;
+            width: 50%;
+            height: 1px;
+            background: linear-gradient(to right, 
+                transparent, 
+                var(--teal-200), 
+                var(--purple-300), 
+                transparent
+            );
+        }
+        
+        #confirm-yes {
+            background: linear-gradient(135deg, var(--teal-200) 0%, var(--primary-color) 100%);
+            filter: drop-shadow(0 0 4px rgba(153, 246, 228, 0.4));
+            padding: 8px 25px;
+            font-weight: 500;
+            letter-spacing: 1px;
+        }
+        
+        #confirm-yes:hover {
+            filter: drop-shadow(0 0 8px rgba(153, 246, 228, 0.6));
+            transform: translateY(-3px);
+        }
+        
+        #confirm-no {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(216, 180, 254, 0.3);
+            padding: 8px 25px;
+            color: var(--text-color);
+            font-weight: 500;
+            letter-spacing: 1px;
+        }
+        
+        #confirm-no:hover {
+            background: rgba(249, 168, 212, 0.1);
+            transform: translateY(-3px);
+            border-color: rgba(249, 168, 212, 0.4);
+        }
+        
+        .progress-bar {
+            background: linear-gradient(90deg, var(--teal-200), var(--purple-300), var(--pink-300));
+            background-size: 200% 100%;
+            animation: gradient-move 4s ease infinite;
+            height: 6px;
+            border-radius: 3px;
+            box-shadow: 0 0 10px rgba(153, 246, 228, 0.4);
+        }
+        
+        /* 进度条容器样式 */
+        .progress-bar-container {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+            height: 6px;
+            margin-top: 20px;
+            width: 90%;
+            margin: 20px auto 5px;
+            box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* 进度条容器光效 */
+        .progress-bar-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(
+                90deg, 
+                transparent, 
+                rgba(255, 255, 255, 0.1), 
+                transparent
+            );
+            animation: progress-shine 2s infinite;
+        }
+        
+        @keyframes progress-shine {
+            0% {
+                left: -100%;
+            }
+            100% {
+                left: 100%;
+            }
+        }
+        
+        /* 修改弹窗背景 */
+        .confirm-modal, .progress-modal {
+            background-color: rgba(216, 180, 254, 0.15); /* 粉紫色背景 */
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+        }
+        
+        /* 增加弹窗内容的可见度 */
+        .modal-content {
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2), 
+                        0 0 20px rgba(216, 180, 254, 0.3);
+            border: 1px solid rgba(216, 180, 254, 0.2);
+            background: rgba(15, 23, 42, 0.7);
+        }
+        
+        /* 为弹窗添加梦幻光晕效果 */
+        .modal-content::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            right: -10px;
+            bottom: -10px;
+            background: radial-gradient(
+                circle at center,
+                rgba(153, 246, 228, 0.1),
+                rgba(216, 180, 254, 0.1),
+                rgba(249, 168, 212, 0.1),
+                transparent
+            );
+            z-index: -1;
+            border-radius: 20px;
+            filter: blur(10px);
+            opacity: 0.7;
+            animation: modal-glow 4s ease-in-out infinite alternate;
+        }
+        
+        @keyframes modal-glow {
+            0% {
+                opacity: 0.5;
+                transform: scale(1);
+            }
+            100% {
+                opacity: 0.9;
+                transform: scale(1.05);
+            }
+        }
+        
+        @keyframes gradient-move {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.8; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.02); }
+        }
+        
+        @keyframes twinkle {
+            0%, 100% {
+                opacity: 0.2;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.7;
+                transform: scale(1.3);
+                filter: drop-shadow(0 0 6px rgba(153, 246, 228, 0.8));
+            }
+        }
+        
+        /* 星云背景效果 */
+        body:before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -3;
+            background: radial-gradient(
+                circle at 80% 20%,
+                rgba(153, 246, 228, 0.1) 0%,
+                rgba(216, 180, 254, 0.1) 25%,
+                rgba(249, 168, 212, 0.1) 50%,
+                rgba(216, 180, 254, 0.1) 75%,
+                rgba(153, 246, 228, 0.1) 100%
+            );
+            animation: nebula 20s ease-in-out infinite;
+        }
+        
+        body:after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -5;
+            background: radial-gradient(
+                circle at 50% 50%,
+                rgba(153, 246, 228, 0.05) 0%,
+                rgba(216, 180, 254, 0.05) 40%,
+                rgba(249, 168, 212, 0.05) 60%,
+                rgba(0, 0, 0, 0) 100%
+            );
+            opacity: 0.6;
+            animation: pulse-bg 15s ease-in-out infinite;
+        }
+        
+        @keyframes nebula {
+            0% {
+                opacity: 0.3;
+                transform: scale(1) rotate(0deg);
+            }
+            50% {
+                opacity: 0.5;
+                transform: scale(1.1) rotate(3deg);
+            }
+            100% {
+                opacity: 0.3;
+                transform: scale(1) rotate(0deg);
+            }
+        }
+        
+        @keyframes nebula-reverse {
+            0% {
+                opacity: 0.3;
+                transform: scale(1) rotate(0deg);
+            }
+            50% {
+                opacity: 0.5;
+                transform: scale(1.1) rotate(-3deg);
+            }
+            100% {
+                opacity: 0.3;
+                transform: scale(1) rotate(0deg);
+            }
+        }
+        
+        @keyframes pulse-bg {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 0.6;
+            }
+            50% {
+                transform: scale(1.2);
+                opacity: 0.8;
+            }
+        }
+        
+        /* 滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        /* 飘落星星效果 */
+        .falling-star {
+            position: absolute;
+            background-color: #fff;
+            border-radius: 50%;
+            filter: drop-shadow(0 0 5px rgba(153, 246, 228, 0.8));
+            pointer-events: none;
+            z-index: 1000;
+        }
+        
+        @keyframes fallingStar {
+            0% {
+                opacity: 0;
+                transform: translateY(0) translateX(0) scale(0.5);
+            }
+            10% {
+                opacity: 1;
+                transform: translateY(10vh) translateX(5px) scale(1);
+            }
+            90% {
+                opacity: 0.8;
+                transform: translateY(90vh) translateX(var(--end-x)) scale(0.8);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(100vh) translateX(var(--end-x)) scale(0.3);
+            }
+        }
+        
+        /* 流星效果 */
+        .meteor {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background-color: white;
+            border-radius: 50%;
+            filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.8));
+            pointer-events: none;
+            z-index: 1000;
+            animation: meteor var(--duration, 0.8s) ease-out forwards;
+        }
+        
+        .meteor::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80px;
+            height: 1px;
+            background: linear-gradient(
+                90deg,
+                rgba(255, 255, 255, 0.8) 0%,
+                rgba(153, 246, 228, 0.4) 80%,
+                transparent 100%
+            );
+            transform-origin: left center;
+        }
+        
+        @keyframes meteor {
+            0% {
+                opacity: 1;
+                transform: translate(0, 0) scale(1);
+            }
+            70% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0;
+                transform: translate(calc(var(--end-x) - 100%), calc(var(--end-y) - 100%)) scale(0.3);
+            }
+        }
+        
+        .input-container button:hover {
+            background-color: var(--purple-500);
+            transform: translateY(-2px);
+        }
+        
+        /* 输入框光晕效果 */
+        .input-container {
+            position: relative;
+            overflow: visible;
+        }
+        
+        .input-glow {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: -1;
+            opacity: 0;
+            animation: glow-in 0.5s ease forwards;
+        }
+        
+        .input-glow.fade-out {
+            animation: glow-out 0.5s ease forwards;
+        }
+        
+        .input-focus {
+            border-color: var(--teal-400) !important;
+            box-shadow: 0 0 0 2px rgba(153, 246, 228, 0.3);
+        }
+        
+        .input-active {
+            border-color: var(--purple-400) !important;
+        }
+        
+        @keyframes glow-in {
+            0% {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1.2);
+            }
+        }
+        
+        @keyframes glow-out {
+            0% {
+                opacity: 1;
+                transform: scale(1.2);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(1.5);
+            }
+        }
+        
+        /* 示例卡片样式 */
+        .examples-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 10px 0 20px;
+            animation: fade-in 0.8s ease-out;
+        }
+        
+        .examples-title {
+            font-size: 1rem;
+            color: var(--text-color);
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: 400;
+            letter-spacing: 1px;
+            text-shadow: 0 0 10px rgba(153, 246, 228, 0.5);
+        }
+        
+        .example-cards {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            width: 100%;
+        }
+        
+        .example-card {
+            flex: 1;
+            min-width: 200px;
+            max-width: 280px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 15px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+        
+        .example-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, 
+                rgba(153, 246, 228, 0.1),
+                rgba(216, 180, 254, 0.1), 
+                rgba(249, 168, 212, 0.1));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: -1;
+        }
+        
+        .example-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15),
+                        0 0 15px rgba(153, 246, 228, 0.3);
+            border-color: rgba(153, 246, 228, 0.3);
+        }
+        
+        .example-card:hover::before {
+            opacity: 1;
+        }
+        
+        .example-card-inner {
+            padding: 15px;
+        }
+        
+        .example-card h4 {
+            font-size: 1rem;
+            margin-bottom: 10px;
+            background: linear-gradient(to right, var(--teal-200), var(--purple-300));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            display: inline-block;
+            font-weight: 500;
+            position: relative;
+        }
+        
+        .example-card h4::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: -3px;
+            width: 100%;
+            height: 1px;
+            background: linear-gradient(to right, var(--teal-200), transparent);
+            opacity: 0.5;
+        }
+        
+        .example-card p {
+            font-size: 0.9rem;
+            color: var(--text-color);
+            line-height: 1.5;
+            opacity: 0.9;
+        }
+        
+        .example-card.clicked {
+            transform: scale(0.95);
+            opacity: 0.8;
+            transition: all 0.3s ease;
+        }
+        
+        .examples-container.fade-out {
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: all 0.5s ease;
+        }
+        
+        @keyframes fade-in {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 动态背景元素 -->
+    <div class="stars-container"></div>
+    <div class="bubbles-container"></div>
+    
+    <div class="container">
+        <!-- 左侧聊天区域 -->
+        <div class="chat-container">
+            <div class="chat-header">
+                <div class="star-decoration star-top-left"></div>
+                <div class="star-decoration star-top-right"></div>
+                <h1>I-AM 心灵伴侣</h1>
+                <p class="header-description">个性化冥想音频，连接内在力量，实现心灵愿景。</p>
+                <div class="star-decoration star-bottom-left"></div>
+                <div class="star-decoration star-bottom-right"></div>
+            </div>
+            <div class="chat-messages" id="chat-messages">
+                <!-- 示例卡片 -->
+                <div class="examples-container" id="examples-container">
+                    <h3 class="examples-title">您可以尝试以下示例:</h3>
+                    <div class="example-cards">
+                        <div class="example-card" id="example-1">
+                            <div class="example-card-inner">
+                                <h4>考试焦虑</h4>
+                                <p>我最近因为考试特别焦虑，马上要考试了，请生成一段有关考试的冥想音频。</p>
+                            </div>
+                        </div>
+                        <div class="example-card" id="example-2">
+                            <div class="example-card-inner">
+                                <h4>表白信心</h4>
+                                <p>我要给喜欢的女生表白了，很紧张，请生成一段肯定语，让我有信心。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- 消息会动态插入这里 -->
+            </div>
+            <div class="chat-input-container">
+                <textarea id="message-input" placeholder="请输入您的问题..." rows="2"></textarea>
+                <button id="send-button">发送</button>
+            </div>
+        </div>
+        
+        <!-- 右侧存储区域 -->
+        <div class="storage-container">
+            <div class="affirmation-container">
+                <h2>肯定语</h2>
+                <div class="affirmation-list" id="affirmation-list">
+                    <!-- 肯定语会动态插入到这里 -->
+                </div>
+            </div>
+            <div class="meditation-container">
+                <h2>冥想音频</h2>
+                <div class="meditation-list" id="meditation-list">
+                    <!-- 冥想音频会动态插入到这里 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 确认弹窗 -->
+    <div class="confirm-modal" id="confirm-modal">
+        <div class="modal-content">
+            <h3 id="modal-question">是否进行操作？</h3>
+            <div class="modal-buttons">
+                <button id="confirm-yes">是</button>
+                <button id="confirm-no">否</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 进度弹窗 -->
+    <div class="progress-modal" id="progress-modal">
+        <div class="modal-content">
+            <h3 id="progress-message">正在生成...</h3>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progress-bar"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html> 

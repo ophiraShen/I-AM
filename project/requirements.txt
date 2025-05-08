@@ -1,0 +1,25 @@
+# FastAPI后端依赖
+fastapi==0.103.1
+uvicorn[standard]==0.23.2
+python-multipart==0.0.6
+aiosqlite==0.19.0
+pydantic==2.3.0
+python-dotenv==1.0.0
+pyyaml==6.0.1
+websockets==11.0.3
+httpx==0.24.1
+
+# LangChain相关依赖
+langchain==0.3.23
+langchain-openai==0.3.14
+langchain-core==0.3.54
+
+# 音频处理相关
+pydub==0.25.1
+soundfile==0.12.1
+librosa==0.10.2
+
+# 工具依赖
+numpy==1.25.2
+pandas==2.1.0
+pillow==10.4.0

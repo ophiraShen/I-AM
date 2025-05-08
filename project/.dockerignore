@@ -1,0 +1,51 @@
+# Git
+.git
+.gitignore
+
+# 编辑器配置
+.vscode
+.idea
+*.swp
+*.swo
+
+# 环境配置（已通过挂载卷的方式添加）
+# .env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 临时文件
+*.log
+*.tmp
+*.temp
+tmp/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 大型二进制文件
+*.mp3
+*.wav
+*.pdf
+*.zip 
