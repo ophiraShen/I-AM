@@ -26,48 +26,58 @@ I-AM 采用了先进的人工智能技术，主要包括：
 I-AM/
 ├── project/
 │   ├── backend/
-│   │   ├── agents/
-│   │   │   ├── chat_agent.py         # 主对话代理
-│   │   │   ├── meditation_agent.py   # 冥想生成代理
-│   │   │   ├── affirmation_agent.py  # 肯定语生成代理
-│   │   │   ├── meditation_tts.py     # 语音合成模块
-│   │   │   ├── jupyter/              # Jupyter笔记本演示
-│   │   │   ├── output/               # 生成的音频输出
-│   │   │   └── prompts/              # 提示词模板
-├── models/                           # 预训练模型
-├── CosyVoice/                        # 语音合成引擎
-└── requirements.txt                  # 依赖包
+│   │   ├── agents/           # AI代理逻辑
+│   │   ├── config/           # 配置文件
+│   │   ├── static/           # 静态资源
+│   │   ├── output/           # 生成的音频文件
+│   │   └── main.py           # 主入口文件
+│   ├── frontend/             # 前端文件
+│   │   ├── index.html        # 主HTML页面
+│   │   ├── app.js            # JavaScript逻辑
+│   │   └── styles.css        # 样式表
+│   ├── requirements.txt      # 依赖包
+│   └── Dockerfile            # Docker配置文件
+├── models/                   # 预训练模型
+└── CosyVoice/                # 语音合成引擎
 ```
 
 ## 使用方法
 
-目前项目正在积极开发中，您可以通过以下方式体验 I-AM：
+前后端已经完成开发，您可以通过以下方式体验 I-AM：
 
-1. 克隆项目到本地：
-   ```
-   git clone https://github.com/YOUR_USERNAME/I-AM.git
-   cd I-AM
-   ```
+### 1. 本地运行
 
-2. 安装依赖：
-   ```
-   pip install -r requirements.txt
-   ```
+```bash
+# 克隆项目
+git clone https://github.com/YOUR_USERNAME/I-AM.git
+cd I-AM
 
-3. 通过Jupyter笔记本体验：
-   ```
-   cd project/backend/agents/jupyter
-   jupyter notebook chat_agent.ipynb
-   ```
+# 安装依赖
+pip install -r project/requirements.txt
 
-4. 与机器人交流，尝试生成冥想音频，例如：
-   - "我最近压力很大，总是睡不好"
-   - "我想提高自信，但总是感到怀疑自己"
-   - "请为我生成一段面试前的冥想音频"
+# 启动应用
+cd project/backend
+python main.py
+```
+
+访问 `http://localhost:8000` 开始使用I-AM
+
+### 2. Docker部署
+
+```bash
+# 克隆项目
+git clone https://github.com/YOUR_USERNAME/I-AM.git
+cd I-AM/project
+
+# 使用Docker Compose构建和启动
+docker-compose up -d
+```
+
+访问 `http://<服务器IP地址>/` 开始使用
 
 ## 已生成的示例冥想音频
 
-您可以在 `project/backend/agents/output/meditation/tts` 目录中找到一些已生成的冥想音频示例：
+您可以在 `project/backend/output/meditation/tts` 目录中找到一些已生成的冥想音频示例：
 
 - 20250117101407.wav
 - 20250117173323.wav

@@ -49,4 +49,11 @@ async def websocket_chat(websocket: WebSocket):
 
 @app.get("/")
 async def index():
-    return FileResponse(os.path.join(FRONTEND_DIR, "index.html")) 
+    return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
+
+
+if __name__ == "__main__":
+    import uvicorn
+    print("启动服务器，请访问以下地址：")
+    # 使用0.0.0.0而不是127.0.0.1使服务器在网络上可访问
+    uvicorn.run(app, host="0.0.0.0", port=8000)

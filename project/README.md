@@ -1,6 +1,6 @@
 # I-AM 项目
 
-I-AM是一个AI冥想与肯定语生成助手，提供实时对话、肯定语生成和冥想音频生成功能。
+I-AM是一个AI冥想与肯定语生成助手，提供实时对话、肯定语生成和冥想音频生成功能。**前后端已完成开发**，可直接部署使用。
 
 ## 项目结构
 
@@ -10,12 +10,34 @@ I-AM/
 │   ├── agents/        # AI代理逻辑
 │   ├── config/        # 配置文件
 │   ├── static/        # 静态资源
+│   ├── output/        # 生成的音频文件
 │   └── main.py        # 主入口文件
 └── frontend/          # 前端文件
     ├── index.html     # 主HTML页面
     ├── app.js         # JavaScript逻辑
     └── styles.css     # 样式表
 ```
+
+## 快速启动
+
+### 本地运行
+
+1. 安装依赖:
+
+```bash
+pip install -r requirements.txt
+```
+
+2. 启动应用:
+
+```bash
+cd project/backend
+python main.py
+```
+
+3. 访问应用:
+
+浏览器打开 `http://localhost:8000`
 
 ## Docker部署说明
 

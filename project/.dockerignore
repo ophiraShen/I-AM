@@ -8,9 +8,6 @@
 *.swp
 *.swo
 
-# 环境配置（已通过挂载卷的方式添加）
-# .env
-
 # Python
 __pycache__/
 *.py[cod]
@@ -48,4 +45,10 @@ Thumbs.db
 *.mp3
 *.wav
 *.pdf
-*.zip 
+*.zip
+
+# 模型文件（通过卷挂载方式添加）
+pretrained_models/
+*.pt
+*.onnx
+*.safetensors

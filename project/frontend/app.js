@@ -5,6 +5,10 @@ let waitingForInterruptResponse = false;
 let messageQueue = [];
 let isProcessing = false;
 let currentBotMessage = null; // 新增：当前正在构建的机器人消息元素
+let activeBubbles = []; // 跟踪活跃的泡泡
+let activeStars = []; // 跟踪活跃的星星
+let starAnimationFrame = null; // 存储星星动画的requestAnimationFrame ID
+let meteorsEnabled = false; // 禁用流星效果，防止闪烁
 
 // DOM 元素
 const messageInput = document.getElementById('message-input');
@@ -45,37 +49,51 @@ document.addEventListener('DOMContentLoaded', () => {
     // 生成欢迎消息
     appendBotMessage('欢迎使用 I-AM 心灵伴侣！我能帮您缓解压力、提供肯定语或引导冥想。请告诉我您的需求。');
     
-    // 初始化梦幻泡泡效果
+    // 初始化梦幻泡泡效果 - 使用较少的泡泡
     createBubbles();
     
-    // 周期性更新星星效果
-    setInterval(() => {
+    // 使用requestAnimationFrame更新星星效果，而不是setInterval
+    updateStars();
+});
+
+// 使用requestAnimationFrame更新星星效果
+function updateStars() {
+    // 限制更新频率 - 每5秒才真正更新一次
+    const now = Date.now();
+    if (!updateStars.lastUpdate || now - updateStars.lastUpdate > 5000) {
+        updateStars.lastUpdate = now;
+        
         const stars = document.querySelectorAll('.star');
         stars.forEach(star => {
+            // 使用CSS变量而不是直接修改样式
             const newSize = Math.random() * 3 + 1;
             const newOpacity = Math.random() * 0.5 + 0.2;
             
-            star.style.width = `${newSize}px`;
-            star.style.height = `${newSize}px`;
-            star.style.opacity = newOpacity;
+            star.style.setProperty('--star-size', `${newSize}px`);
+            star.style.setProperty('--star-opacity', newOpacity);
         });
-    }, 5000);
-});
-
-// 创建梦幻泡泡效果
-function createBubbles() {
-    // 清空容器
-    bubblesContainer.innerHTML = '';
+    }
     
-    // 创建泡泡元素
-    const bubbleCount = 20; // 泡泡数量
+    // 继续动画循环
+    starAnimationFrame = requestAnimationFrame(updateStars);
+}
+
+// 创建梦幻泡泡效果 - 优化版本
+function createBubbles() {
+    // 清空容器和跟踪数组
+    bubblesContainer.innerHTML = '';
+    activeBubbles = [];
+    activeStars = [];
+    
+    // 减少泡泡数量
+    const bubbleCount = 10; // 泡泡数量减半
     
     for (let i = 0; i < bubbleCount; i++) {
         const bubble = document.createElement('div');
         bubble.classList.add('bubble');
         
         // 随机设置泡泡的大小
-        const size = Math.random() * 60 + 20;
+        const size = Math.random() * 40 + 20; // 稍微减小泡泡尺寸范围
         bubble.style.width = `${size}px`;
         bubble.style.height = `${size}px`;
         
@@ -83,32 +101,36 @@ function createBubbles() {
         const left = Math.random() * 100;
         bubble.style.left = `${left}%`;
         
-        // 随机设置泡泡的透明度
-        const opacity = Math.random() * 0.3 + 0.1;
+        // 随机设置泡泡的透明度 - 降低整体透明度
+        const opacity = Math.random() * 0.2 + 0.05; // 降低透明度
         bubble.style.opacity = opacity;
         
-        // 随机设置泡泡的动画持续时间
-        const duration = Math.random() * 20 + 15;
+        // 增加动画时间，减少动画频率
+        const duration = Math.random() * 30 + 20; // 增加动画时间
         bubble.style.animationDuration = `${duration}s`;
         
-        // 随机设置泡泡的动画延迟
-        const delay = Math.random() * 10;
+        // 错开动画开始时间
+        const delay = Math.random() * 15;
         bubble.style.animationDelay = `${delay}s`;
         
         // 随机选择泡泡的颜色
         const colors = [
-            'rgba(153, 246, 228, 0.15)', // teal
-            'rgba(216, 180, 254, 0.15)', // purple
-            'rgba(249, 168, 212, 0.15)'  // pink
+            'rgba(153, 246, 228, 0.1)', // teal - 降低透明度
+            'rgba(216, 180, 254, 0.1)', // purple - 降低透明度
+            'rgba(249, 168, 212, 0.1)'  // pink - 降低透明度
         ];
         const colorIndex = Math.floor(Math.random() * colors.length);
         bubble.style.background = colors[colorIndex];
         
+        // 使用will-change提示浏览器这个元素会频繁动画
+        bubble.style.willChange = 'transform, opacity';
+        
         bubblesContainer.appendChild(bubble);
+        activeBubbles.push(bubble);
     }
     
-    // 添加一些星星
-    const starCount = 30;
+    // 添加一些星星，但数量减少
+    const starCount = 15; // 减少星星数量
     for (let i = 0; i < starCount; i++) {
         const star = document.createElement('div');
         star.classList.add('star');
@@ -119,67 +141,30 @@ function createBubbles() {
         star.style.top = `${top}%`;
         star.style.left = `${left}%`;
         
-        // 随机设置星星的大小
-        const size = Math.random() * 3 + 1;
+        // 随机设置星星的大小，使用CSS变量
+        const size = Math.random() * 2 + 1; // 减小星星尺寸
+        star.style.setProperty('--star-size', `${size}px`);
         star.style.width = `${size}px`;
         star.style.height = `${size}px`;
         
-        // 随机设置星星的动画延迟
-        const delay = Math.random() * 3;
+        // 增加动画周期，减少频率
+        const delay = Math.random() * 5;
         star.style.animationDelay = `${delay}s`;
         
-        const duration = Math.random() * 2 + 2;
+        const duration = Math.random() * 4 + 3;
         star.style.animationDuration = `${duration}s`;
         
+        // 使用will-change提示
+        star.style.willChange = 'transform, opacity';
+        
         bubblesContainer.appendChild(star);
+        activeStars.push(star);
     }
-
-    // 创建星星飘落效果
-    createFallingStars();
 }
 
-// 创建飘落的星星
+// 创建飘落的星星 - 修改为更少的星星
 function createFallingStars() {
-    const container = document.body;
-    const starCount = 15;
-    
-    // 每隔一段时间创建一颗新星星
-    function createStar() {
-        const star = document.createElement('div');
-        star.classList.add('falling-star');
-        
-        // 随机位置和大小
-        const size = Math.random() * 4 + 2;
-        const startX = Math.random() * window.innerWidth;
-        
-        star.style.width = `${size}px`;
-        star.style.height = `${size}px`;
-        star.style.left = `${startX}px`;
-        star.style.top = '-10px';
-        
-        // 随机下落速度和横向漂移
-        const duration = Math.random() * 5 + 3;
-        const endX = startX + (Math.random() * 200 - 100);
-        
-        // 设置动画
-        star.style.animation = `fallingStar ${duration}s linear forwards`;
-        star.style.setProperty('--end-x', `${endX}px`);
-        
-        container.appendChild(star);
-        
-        // 动画结束后移除星星
-        setTimeout(() => {
-            star.remove();
-        }, duration * 1000);
-    }
-    
-    // 初始创建一批星星
-    for (let i = 0; i < starCount; i++) {
-        setTimeout(createStar, Math.random() * 3000);
-    }
-    
-    // 持续创建新星星
-    setInterval(createStar, 2000);
+    // 该函数已整合到createMeteor中，不再单独调用
 }
 
 // 初始化 WebSocket 连接
@@ -234,10 +219,19 @@ function initEventListeners() {
     // 初始化示例卡片点击事件
     initExampleCards();
     
-    // 点击页面任意处触发流星效果
+    // 禁用点击页面触发流星效果，避免闪烁问题
+    // 如果未来需要重新启用，取消下面的注释
+    /*
+    let lastMeteorTime = 0;
     document.addEventListener('click', (e) => {
-        createMeteor(e.clientX, e.clientY);
+        const now = Date.now();
+        // 至少间隔1秒才能创建新流星
+        if (meteorsEnabled && now - lastMeteorTime > 1000) {
+            lastMeteorTime = now;
+            createMeteor(e.clientX, e.clientY);
+        }
     });
+    */
     
     // 输入框效果
     const userInput = document.getElementById('user-input');
@@ -249,16 +243,23 @@ function initEventListeners() {
         userInput.classList.remove('input-focus');
     });
     
-    // 输入时显示光晕效果
+    // 优化输入时的光晕效果 - 使用防抖
+    let inputDebounceTimer;
     userInput.addEventListener('input', () => {
-        if (!userInput.classList.contains('input-active') && userInput.value.trim() !== '') {
-            userInput.classList.add('input-active');
-            
-            // 创建光晕效果
-            createInputGlow();
-        } else if (userInput.value.trim() === '') {
-            userInput.classList.remove('input-active');
-        }
+        clearTimeout(inputDebounceTimer);
+        
+        inputDebounceTimer = setTimeout(() => {
+            if (!userInput.classList.contains('input-active') && userInput.value.trim() !== '') {
+                userInput.classList.add('input-active');
+                
+                // 创建光晕效果，但不要在每次输入时都创建
+                if (!document.querySelector('.input-glow')) {
+                    createInputGlow();
+                }
+            } else if (userInput.value.trim() === '') {
+                userInput.classList.remove('input-active');
+            }
+        }, 300); // 300ms延迟
     });
 }
 
@@ -586,8 +587,12 @@ function generateSessionId() {
     });
 }
 
-// 创建流星效果
+// 创建流星效果 - 修复闪烁问题
 function createMeteor(x, y) {
+    // 限制同时存在的流星数量
+    const existingMeteors = document.querySelectorAll('.meteor');
+    if (existingMeteors.length >= 3) return; // 最多同时3个流星
+    
     const meteor = document.createElement('div');
     meteor.classList.add('meteor');
     
@@ -597,17 +602,19 @@ function createMeteor(x, y) {
     
     // 随机角度和距离
     const angle = Math.random() * 60 + 210; // 朝左下方向
-    const distance = Math.random() * 300 + 100;
-    const duration = Math.random() * 1 + 0.5;
+    const distance = Math.random() * 150 + 50; // 减少距离，避免过大范围的闪烁
+    const duration = Math.random() * 0.6 + 0.3; // 减少持续时间
     
-    // 设置终点位置
-    const endX = x + distance * Math.cos(angle * Math.PI / 180);
-    const endY = y + distance * Math.sin(angle * Math.PI / 180);
+    // 计算终点位置
+    const endX = distance * Math.cos(angle * Math.PI / 180);
+    const endY = distance * Math.sin(angle * Math.PI / 180);
     
+    // 直接设置为CSS变量
     meteor.style.setProperty('--end-x', `${endX}px`);
     meteor.style.setProperty('--end-y', `${endY}px`);
     meteor.style.setProperty('--duration', `${duration}s`);
     
+    // 添加到body中
     document.body.appendChild(meteor);
     
     // 动画结束后移除流星
@@ -616,21 +623,26 @@ function createMeteor(x, y) {
     }, duration * 1000);
 }
 
-// 创建输入框光晕效果
+// 创建输入框光晕效果 - 优化版本
 function createInputGlow() {
+    // 删除现有的光晕
+    const existingGlow = document.querySelector('.input-glow');
+    if (existingGlow) existingGlow.remove();
+    
     const inputContainer = document.querySelector('.input-container');
     const glow = document.createElement('div');
     glow.classList.add('input-glow');
     
-    // 随机颜色
+    // 随机颜色但透明度降低
     const colors = [
-        'rgba(153, 246, 228, 0.6)',
-        'rgba(216, 180, 254, 0.6)',
-        'rgba(249, 168, 212, 0.6)'
+        'rgba(153, 246, 228, 0.4)', // 降低透明度
+        'rgba(216, 180, 254, 0.4)', // 降低透明度
+        'rgba(249, 168, 212, 0.4)'  // 降低透明度
     ];
     const color = colors[Math.floor(Math.random() * colors.length)];
     
     glow.style.background = `radial-gradient(circle at center, ${color} 0%, transparent 70%)`;
+    glow.style.willChange = 'opacity, transform';
     
     inputContainer.appendChild(glow);
     
