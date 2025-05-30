@@ -55,7 +55,6 @@ ztmp/
 saved_code/
 CosyVoice/
 project/backend/agents/jupyter/output/
-*.wav
 
 # 模型
 i_am-20241217-013701/
