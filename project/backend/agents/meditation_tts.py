@@ -23,7 +23,7 @@ class CosyVoice2TTS:
         """
         self.cosyvoice = CosyVoice2(
             model_path,
-            load_jit=True,
+            load_jit=False,
             load_onnx=False,
             load_trt=False
         )
@@ -42,7 +42,8 @@ class CosyVoice2TTS:
         music_extension_duration=30,
         fade_in_duration=5,
         fade_out_duration=10,
-        max_retries=3
+        max_retries=3,
+        progress_callback=None
     ):
         """
         生成完整的冥想音频，包含语音和背景音乐
@@ -59,6 +60,7 @@ class CosyVoice2TTS:
             fade_in_duration: 淡入时间
             fade_out_duration: 淡出时间
             max_retries: 最大重试次数
+            progress_callback: 进度回调函数
         """
 
         if isinstance(texts, str):
@@ -98,6 +100,9 @@ class CosyVoice2TTS:
 
                 audio_segments[idx] = audio
                 pbar.update(1)
+                if progress_callback:
+                    percent = int((idx + 1) / total_len * 100)
+                    progress_callback(percent, idx + 1, total_len)
             if not failed:
                 success = True
                 pbar.close()

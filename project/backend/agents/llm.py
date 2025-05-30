@@ -1,14 +1,25 @@
 #I-AM/project/backend/agents/llm.py
+import sys
 import os
+from pathlib import Path
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent
+print(ROOT_DIR)
+sys.path.append(str(ROOT_DIR))
+
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv(ROOT_DIR / '.env')
+
 
 from langchain_openai import ChatOpenAI
 
 
-def get_llm(model_type: str = "qwen2.5", **kwargs):
+def get_llm(model_type: str = "tongyi", **kwargs):
     """直接获取 LLM 模型实例"""
     
+    print("=================================================")
+    print(model_type)
+    print("=================================================")
+
     # 默认参数
     default_params = {
         "temperature": 0.9,

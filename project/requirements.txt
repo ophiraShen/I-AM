@@ -11,9 +11,9 @@ grpcio==1.57.0
 grpcio-tools==1.57.0
 pydantic==2.11.3
 
-# PyTorch 相关 - CPU 版本
-torch==2.6.0
-torchaudio==2.6.0
+# PyTorch 相关 - CPU 版本（无 +cuXXX 后缀即为 CPU 版）
+# torch==2.6.0
+# torchaudio==2.6.0
 lightning==2.2.4
 tensorboard==2.14.0
 

@@ -49,42 +49,8 @@ from .models import OverallState
 from .meditation_tts import CosyVoice2TTS
 
 
-config_path = os.path.join(ROOT_DIR, 'backend', 'config', 'meditation.yaml')
+config_path = ROOT_DIR / 'backend' / 'config' / 'meditation.yaml'
 
-#=======================================================================================
-# def add_log(current_log, new_log: str) -> list[str]:
-#     if current_log is None:
-#         return [new_log]
-#     elif isinstance(current_log, list):
-#         return current_log + [new_log]
-#     elif isinstance(current_log, str):
-#         return [current_log, new_log]
-#     else:
-#         return [new_log]
-
-# class OverallState(BaseModel):
-#     model_config = ConfigDict(arbitrary_types_allowed=True)
-
-#     messages: List[AnyMessage] = Field(default_factory=list, title="对话列表")
-#     route: Literal["diary", "meditation", "normal_chat"] = Field(default="normal_chat", title="当前路由")
-#     log: List[str] = Field(default_factory=list, title="日志列表")
-
-#     @field_validator('log', mode='before')
-#     def validate_log(cls, v, info):
-#         if v is None or (isinstance(v, list) and len(v) == 0):
-#             return []
-#         if 'log' in info.data:
-#             return add_log(info.data['log'], v)
-#         return [v] if isinstance(v ,str) else v
-        
-
-#     @field_validator('messages', mode='before')
-#     def validate_messages(cls, v, info):
-#         if 'messages' in info.data:
-#             return add_messages(info.data['messages'], v)
-#         else:
-#             return v if isinstance(v, list) else [v]
-#=======================================================================================
 
 # 统一的结果状态类定义
 class NodeResult(OverallState):
@@ -205,9 +171,9 @@ class MeditationAgent:
         self.llm = get_llm(model_type=self.model_type)
         
         # Load prompts
-        outline_prompt_path = self.config['prompts']['outline']
-        script_prompt_path = self.config['prompts']['script']
-        tone_prompt_path = self.config['prompts']['tone']
+        outline_prompt_path = ROOT_DIR / self.config['prompts']['outline']
+        script_prompt_path = ROOT_DIR / self.config['prompts']['script']
+        tone_prompt_path = ROOT_DIR / self.config['prompts']['tone']
 
         with open(outline_prompt_path, 'r', encoding='utf-8') as f:  
             self.outline_prompt = f.read()
@@ -219,7 +185,7 @@ class MeditationAgent:
         # 初始化 TTS
         self.tts = CosyVoice2TTS(
             model_path=self.config['tts']['tts_model_path'],
-            prompts_config_path=self.config['tts']['tts_resources_config']
+            prompts_config_path=ROOT_DIR / self.config['tts']['tts_resources_config']
         )
 
     async def create_meditation_outline(self, state: NodeResult, config) -> NodeResult:
@@ -267,11 +233,12 @@ class MeditationAgent:
             generate_marked_script = tone_marking_prompt | self.llm.with_structured_output(MarkedMeditationScript, method="function_calling")
             marked_script = await generate_marked_script.ainvoke({"script": state.data['script']}, config)
             marked_script_dict = marked_script.to_yaml_dict()
+
             return NodeResult(route="meditation", data=marked_script_dict, log=log_msg)
         except Exception as e:
             return NodeResult(route="meditation", success=False, error=str(e), log="带标记的脚本生成失败。")
 
-    def create_tts(self, state: NodeResult, session_id=None) -> NodeResult:
+    def create_tts(self, state: NodeResult, session_id=None, config=None) -> NodeResult:
         from datetime import datetime
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
         try:
@@ -279,14 +246,36 @@ class MeditationAgent:
             if session_id is None:
                 session_id = str(uuid.uuid4())
             output_filename = f"{session_id}_{timestamp}.wav"
-            output_dir = os.path.join(ROOT_DIR, "backend", "static", "audio")
-            output_path = os.path.join(output_dir, output_filename)
-            
+            output_dir = ROOT_DIR / "backend" / "static" / "audio"
+            output_path = output_dir / output_filename
+
+            websocket = None
+            if config is not None:
+                websocket = config.get("websocket", None)
+
+            def progress_callback(percent, idx, total):
+                if websocket is not None:
+                    import asyncio
+                    coro = websocket.send_json({
+                        "type": "progress",
+                        "stage": "音频生成进度",
+                        "percent": percent
+                    })
+                    try:
+                        loop = asyncio.get_event_loop()
+                        if loop.is_running():
+                            asyncio.ensure_future(coro)
+                        else:
+                            loop.run_until_complete(coro)
+                    except Exception as e:
+                        print(f"WebSocket 进度推送异常: {e}")
+
             self.tts.generate_audio(
                 texts=state.data,
                 voice_type="female1",
                 background_music_type="bmusic_02",
-                output_path=output_path
+                output_path=output_path,
+                progress_callback=progress_callback
             )
             audio_url = f"/audio/{output_filename}"
             return NodeResult(route="meditation", data={"audio_url": audio_url}, log=log_msg)

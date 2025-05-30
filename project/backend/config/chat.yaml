@@ -1,10 +1,10 @@
 # 路径配置
 paths:
-  project_root: "/root/autodl-tmp/I-AM/project/backend"
-  agents_path: "/root/autodl-tmp/I-AM/project/backend/agents"
-  prompts_path: "/root/autodl-tmp/I-AM/project/backend/agents/prompts/chat"
+  project_root: "backend"
+  agents_path: "backend/agents"
+  prompts_path: "backend/agents/prompts/chat"
   
 # 提示词文件
 prompts:
-  chat_prompt : "/root/autodl-tmp/I-AM/project/backend/agents/prompts/chat/chat_prompt1.txt"
-  router_prompt: "/root/autodl-tmp/I-AM/project/backend/agents/prompts/chat/router_prompt.txt"
+  chat_prompt : "backend/agents/prompts/chat/chat_prompt1.txt"
+  router_prompt: "backend/agents/prompts/chat/router_prompt.txt"

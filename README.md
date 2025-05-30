@@ -77,12 +77,9 @@ docker-compose up -d
 
 ## 已生成的示例冥想音频
 
-您可以在 `project/backend/output/meditation/tts` 目录中找到一些已生成的冥想音频示例：
+您可以在 `/root/autodl-tmp/I-AM/project/backend/static/audio` 目录中找到一些已生成的冥想音频示例：
 
-- 20250117101407.wav
-- 20250117173323.wav
-- 20250119173232.wav
-- 20250420232157.wav
+- 00c48765-9274-4f09-9e48-f4ca049924b0_20250527042654.wav
 
 ## 技术原理
 

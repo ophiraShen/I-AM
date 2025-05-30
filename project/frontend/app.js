@@ -25,6 +25,11 @@ const progressMessage = document.getElementById('progress-message');
 const progressBar = document.getElementById('progress-bar');
 const bubblesContainer = document.querySelector('.bubbles-container');
 
+// 新增：冥想音频专用进度弹窗和进度条
+const meditationProgressModal = document.getElementById('meditation-progress-modal');
+const meditationProgressBar = document.getElementById('meditation-progress-bar');
+const meditationProgressMessage = document.getElementById('meditation-progress-message');
+
 // 将toggleCollapse函数设为全局可访问
 window.toggleCollapse = function(titleBar) {
     const content = titleBar.nextElementSibling;
@@ -356,39 +361,42 @@ function sendMessage() {
 
 // 处理从服务器接收的消息
 function handleSocketMessage(data) {
-    // 移除正在输入指示器
     removeTypingIndicator();
-    
-    // 根据消息类型处理
+    console.log('[WS] 收到消息:', data);
     switch (data.type) {
         case 'message':
             updateBotMessage(data.content);
-            // 添加：收到第一个流式消息时就关闭进度弹窗
             hideProgressModal();
+            hideMeditationProgressModal();
             break;
-            
         case 'interrupt':
-            // 结束当前消息流
             currentBotMessage = null;
             handleInterrupt(data);
             break;
-            
         case 'progress':
-            showProgressModal(data.stage);
+            if (data.stage && data.stage === '音频生成进度') {
+                hideProgressModal(); // 只显示冥想弹窗
+                showMeditationProgressModal(data.stage);
+                if (typeof data.percent === 'number') {
+                    meditationProgressBar.style.width = data.percent + '%';
+                }
+            } else {
+                hideMeditationProgressModal(); // 只显示肯定语弹窗
+                showProgressModal(data.stage);
+                // 肯定语等用假进度条
+            }
             break;
-            
         case 'affirmation':
+            console.log('[肯定语] 收到肯定语:', data.content);
             appendBotMessage('我已为您生成肯定语，您可以在右侧查看。');
             addAffirmation(data.content);
             hideProgressModal();
             break;
-            
         case 'audio':
             appendBotMessage('冥想音频已生成，您可以在右侧播放。');
             addMeditationAudio(data.url);
-            hideProgressModal();
+            hideMeditationProgressModal();
             break;
-            
         default:
             console.log('收到未知类型的消息:', data);
     }
@@ -498,6 +506,7 @@ function removeTypingIndicator() {
 
 // 添加肯定语到肯定语列表
 function addAffirmation(affirmationText) {
+    console.log('[肯定语] 渲染肯定语:', affirmationText);
     // 处理可能的多行肯定语
     const affirmations = affirmationText.split('\n').filter(text => text.trim());
     
@@ -653,4 +662,15 @@ function createInputGlow() {
             glow.remove();
         }, 500);
     }, 1500);
+}
+
+function showMeditationProgressModal(message) {
+    meditationProgressMessage.textContent = message || '音频生成进度';
+    if (meditationProgressModal.style.display !== 'flex') {
+        meditationProgressBar.style.width = '0%';
+    }
+    meditationProgressModal.style.display = 'flex';
+}
+function hideMeditationProgressModal() {
+    meditationProgressModal.style.display = 'none';
 } 

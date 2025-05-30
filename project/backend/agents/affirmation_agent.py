@@ -1,4 +1,5 @@
 # I-AM/project/backend/agents/affirmation_agent.py
+#%%
 import sys
 import os
 from pathlib import Path
@@ -6,10 +7,12 @@ ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(ROOT_DIR))
 from dotenv import load_dotenv
 load_dotenv(os.path.join(ROOT_DIR, '.env'))
+#%%
 
 import yaml
 from datetime import datetime
 from typing import List, Optional, Dict, Any, Literal, Union
+import logging
 
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
@@ -23,37 +26,6 @@ from .llm import get_llm
 from .models import OverallState
 config_path = os.path.join(ROOT_DIR, 'backend', 'config', 'affirmation.yaml')
 
-# def add_log(current_log, new_log: str) -> list[str]:
-#     if current_log is None:
-#         return [new_log]
-#     elif isinstance(current_log, list):
-#         return current_log + [new_log]
-#     elif isinstance(current_log, str):
-#         return [current_log, new_log]
-#     else:
-#         return [new_log]
-
-# class OverallState(BaseModel):
-#     model_config = ConfigDict(arbitrary_types_allowed=True)
-
-#     messages: List[AnyMessage] = Field(default_factory=list, title="对话列表")
-#     route: Literal["affirmation", "meditation", "normal_chat"] = Field(default="normal_chat", title="当前路由")
-#     log: List[str] = Field(default_factory=list, title="日志列表")
-
-#     @field_validator('log', mode='before')
-#     def validate_log(cls, v, info):
-#         if v is None or (isinstance(v, list) and len(v) == 0):
-#             return []
-#         if 'log' in info.data:
-#             return add_log(info.data['log'], v)
-#         return [v] if isinstance(v, str) else v
-
-#     @field_validator('messages', mode='before')
-#     def validate_messages(cls, v, info):
-#         if 'messages' in info.data:
-#             return add_messages(info.data['messages'], v)
-#         else:
-#             return v if isinstance(v, list) else [v]
 
 class NodeResult(OverallState):
     local_route: Literal["insight_node", "generator_node", "error_node"] = Field(default="insight_node", title="本地路由")
@@ -86,7 +58,7 @@ class Affirmations(BaseModel):
         }
 
 class AffirmationAgent:
-    def __init__(self, model_type: str = "deepseek"):
+    def __init__(self, model_type: str = "tongyi"):
         with open(config_path, 'r') as f:
             self.config = yaml.safe_load(f)
         
@@ -94,8 +66,8 @@ class AffirmationAgent:
         self.llm = get_llm(model_type=model_type)
         
         # Load prompts
-        insight_prompt_path = self.config['prompts']['insight']
-        generator_prompt_path = self.config['prompts']['generator']
+        insight_prompt_path = ROOT_DIR / self.config['prompts']['insight']
+        generator_prompt_path = ROOT_DIR / self.config['prompts']['generator']
         with open(insight_prompt_path, 'r', encoding='utf-8') as f:
             self.insight_prompt = f.read()
         with open(generator_prompt_path, 'r', encoding='utf-8') as f:
@@ -111,6 +83,7 @@ class AffirmationAgent:
                     conversation_content += f"assistant: {message.content}\n"
                 else:
                     continue
+            logging.info(f"[肯定语][分析] 对话内容: {conversation_content}")
                     
             insight_prompt = ChatPromptTemplate([
                 ("system", self.insight_prompt),
@@ -118,18 +91,20 @@ class AffirmationAgent:
             ])
             generate_insight_chain = insight_prompt | self.llm.with_structured_output(InsightAnalyzer, method="function_calling")
             insight = await generate_insight_chain.ainvoke({"conversation": conversation_content}, config)
+            logging.info(f"[肯定语][分析] insight: {insight.as_str}")
             
-            print("===========insight===========")
-            print(insight.as_str)
-            print(state.data)
-            print("===========insight===========")
+            # print("===========insight===========")
+            # print(insight.as_str)
+            # print(state.data)
+            # print("===========insight===========")
 
             # 保存分析结果
             timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-            output_path = os.path.join(self.config['paths']['insight_output_path'], f"{timestamp}.yaml")
+            output_path = ROOT_DIR / self.config['paths']['insight_output_path'] / f"{timestamp}.yaml"
             
             with open(output_path, 'w', encoding='utf-8') as f:
                 yaml.dump({"insight": insight.as_str}, f, allow_unicode=True)
+            logging.info(f"[肯定语][分析] 分析结果已保存: {output_path}")
                 
             return NodeResult(
                 local_route="insight_node", 
@@ -138,13 +113,15 @@ class AffirmationAgent:
                 log=f"对话分析成功，已保存至 {output_path}"
             )
         except Exception as e:
+            logging.error(f"[肯定语][分析] 失败: {str(e)}")
             return NodeResult(local_route="insight_node", route="affirmation", success=False, error=str(e), log="对话分析失败。")
 
     async def create_affirmations(self, state: NodeResult, config) -> NodeResult:
         try:
             # 进度通过 log 字段传递
-            log_msg = "肯定语生成中"
+            log_msg = "正在为您准备个性化肯定语"
             user_message = "请基于以下信息生成个性化肯定语：\n\n对话内容：\n{conversation}\n对话分析：\n{insight}"
+            logging.info(f"[肯定语][生成] 输入: conversation={state.data['conversation']}, insight={state.data['insight']}")
             generator_prompt = ChatPromptTemplate([
                 ("system", self.generator_prompt),
                 ("human", user_message)
@@ -157,6 +134,7 @@ class AffirmationAgent:
                 },
                 config
             )
+            logging.info(f"[肯定语][生成] 生成结果: {affirmations.as_str}")
 
             print("===========affirmations===========")
             print(affirmations.as_str)
@@ -165,9 +143,10 @@ class AffirmationAgent:
 
             # 保存肯定语
             timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-            output_path = os.path.join(self.config['paths']['affirmations_output_path'], f"{timestamp}.yaml")
+            output_path = ROOT_DIR / self.config['paths']['affirmations_output_path'] / f"{timestamp}.yaml"
             with open(output_path, 'w', encoding='utf-8') as f:
                 yaml.dump({"affirmations": affirmations.as_str}, f, allow_unicode=True)
+            logging.info(f"[肯定语][生成] 肯定语已保存: {output_path}")
 
             return NodeResult(
                 local_route="generator_node",
@@ -176,10 +155,12 @@ class AffirmationAgent:
                 log="肯定语生成成功"
             )
         except Exception as e:
+            logging.error(f"[肯定语][生成] 失败: {str(e)}")
             return NodeResult(route="affirmation", success=False, error=str(e), log="肯定语生成失败")
 
     def handle_error(self, state: NodeResult) -> NodeResult:
         error_msg = state.error
+        logging.error(f"[肯定语][错误] {error_msg}")
         return NodeResult(
             local_route="error_node",
             route="affirmation",

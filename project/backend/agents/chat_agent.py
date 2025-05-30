@@ -1,10 +1,14 @@
 #I-AM/project/backend/agents/chat_agent.py
+#%%
+
 import sys
 import os
 from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 print(ROOT_DIR)
 sys.path.append(str(ROOT_DIR))
+#%%
+
 from dotenv import load_dotenv
 load_dotenv(ROOT_DIR / '.env')
 
@@ -43,38 +47,6 @@ logging.getLogger().setLevel(logging.WARNING)
 
 config_path = ROOT_DIR / 'backend' / 'config' / 'chat.yaml'
 
-# def add_log(current_log, new_log: str) -> list[str]:
-#     if current_log is None:
-#         return [new_log] if isinstance(new_log, str) else new_log
-#     elif isinstance(current_log, list):
-#         return current_log + [new_log] if isinstance(new_log, str) else new_log
-#     elif isinstance(current_log, str):
-#         return [current_log, new_log] if isinstance(new_log, str) else new_log
-#     else:
-#         return [new_log] if isinstance(new_log, str) else new_log
-
-# class OverallState(BaseModel):
-#     messages: Annotated[List[AnyMessage], add_messages] = Field(default_factory=list, title="对话列表")
-#     route: Literal["affirmation", "meditation", "normal_chat"] = Field(default="normal_chat", title="当前路由")
-#     log: Annotated[List[str], add_log] = Field(default_factory=list, title="日志列表")
-
-#     model_config = ConfigDict(arbitrary_types_allowed=True)
-
-#     @field_validator('log', mode='before')
-#     def validate_log(cls, v, info):
-#         if v is None or (isinstance(v, list) and len(v) == 0):
-#             return []
-#         if 'log' in info.data:
-#             return add_log(info.data['log'], v)
-#         return [v] if isinstance(v, str) else v
-
-#     @field_validator('messages', mode='before')
-#     def validate_messages(cls, v, info):
-#         if 'messages' in info.data:
-#             return add_messages(info.data['messages'], v)
-#         else:
-#             return v if isinstance(v, list) else [v]
-
 class Router(TypedDict):
     route: Literal["affirmation", "meditation", "normal_chat"]
 
@@ -85,10 +57,14 @@ class ChatAgent:
         
         # 初始化 LLM
         self.llm = get_llm(model_type=model_type)
+
+        # print("================")
+        # print(self.llm.invoke("你好"))
+        # print("================")
         
         # 加载提示词
-        router_prompt_path = self.config['prompts']['router_prompt']
-        chat_prompt_path = self.config['prompts']['chat_prompt']
+        router_prompt_path = ROOT_DIR / self.config['prompts']['router_prompt']
+        chat_prompt_path = ROOT_DIR / self.config['prompts']['chat_prompt']
 
         with open(router_prompt_path, 'r', encoding='utf-8') as file:
             self.router_prompt = file.read().strip()
@@ -96,8 +72,8 @@ class ChatAgent:
             self.chat_prompt = file.read().strip()
 
         # 初始化子模块
-        self.affirmation_agent = AffirmationAgent().create_graph()
-        self.meditation_agent = MeditationAgent().create_graph()
+        self.affirmation_agent = AffirmationAgent(model_type=model_type).create_graph()
+        self.meditation_agent = MeditationAgent(model_type=model_type).create_graph()
         
         # 构建对话图
         self.dialogue_graph = self._build_graph()
@@ -151,7 +127,7 @@ class ChatAgent:
         if state.route == "affirmation":
             user_approval = interrupt(
                 {
-                    "question": "是否进行肯定语生成？",
+                    "question": "是否需要为您提供个性化的肯定语？",
                     "options": ["yes", "no"],
                     "default": "no",
                 }
@@ -193,7 +169,7 @@ class ChatAgent:
 
         return workflow.compile(checkpointer=MemorySaver())
 
-    async def chat(self, message: str, thread_id: str):
+    async def chat(self, message: str, thread_id: str, websocket=None):
         """
         处理用户输入并返回响应
         
@@ -208,27 +184,30 @@ class ChatAgent:
             thread = {
                 "configurable": {
                     "thread_id": thread_id
-                }
+                },
+                "websocket": websocket
             }
-            
             inputs = {
                 "messages": [HumanMessage(content=message)],
                 "log": []
             }
             last_log = None
+            logging.info(f"[ChatAgent] chat called, message={message}, thread_id={thread_id}")
             async for stream_mode, chunk in self.dialogue_graph.astream(inputs, config=thread, stream_mode=["messages", "updates"]):
                 if stream_mode == "messages":
-                    # chunk 可能是 AIMessage 或 NodeResult
                     if hasattr(chunk[0], "content") and chunk[0].content:
+                        logging.info(f"[ChatAgent] yield message: {chunk[0].content}")
                         yield {"type": "message", "content": chunk[0].content}
                     elif hasattr(chunk[0], "data") and chunk[0].data:
                         if "affirmations" in chunk[0].data:
+                            logging.info(f"[ChatAgent] yield affirmation: {chunk[0].data['affirmations']}")
                             yield {"type": "affirmation", "content": chunk[0].data["affirmations"]}
                         if "audio_url" in chunk[0].data:
+                            logging.info(f"[ChatAgent] yield audio_url: {chunk[0].data['audio_url']}")
                             yield {"type": "audio", "url": chunk[0].data["audio_url"]}
-                    # 检查 log 字段变化，推送 progress
                     if hasattr(chunk[0], "log") and chunk[0].log and chunk[0].log != last_log:
                         last_log = chunk[0].log
+                        logging.info(f"[ChatAgent] progress: {last_log}")
                         if "冥想脚本生成中" in last_log:
                             yield {"type": "progress", "stage": "冥想脚本生成中"}
                         elif "冥想音频生成中" in last_log:
@@ -237,9 +216,11 @@ class ChatAgent:
                             yield {"type": "progress", "stage": "肯定语生成中"}
                 elif stream_mode == "updates":
                     if isinstance(chunk, tuple) and hasattr(chunk[0], "value"):
+                        logging.info(f"[ChatAgent] interrupt: {chunk[0].value}")
                         yield {"type": "interrupt", **chunk[0].value}
                     elif isinstance(chunk, dict) and "__interrupt__" in chunk:
                         val = chunk["__interrupt__"]
+                        logging.info(f"[ChatAgent] interrupt dict: {val}")
                         if isinstance(val, dict):
                             yield {"type": "interrupt", **val}
                         elif hasattr(val, "value"):
@@ -253,7 +234,7 @@ class ChatAgent:
             logging.error(f"Chat error: {str(e)}")
             raise
 
-    async def resume_chat(self, response: str, thread_id: str):
+    async def resume_chat(self, response: str, thread_id: str, websocket=None):
         """从用户中断处恢复对话流程
         
         Args:
@@ -267,7 +248,8 @@ class ChatAgent:
             config = {
                 "configurable": {
                     "thread_id": thread_id
-                }
+                },
+                "websocket": websocket
             }
             last_log = None
             async for stream_mode, chunk in self.dialogue_graph.astream(Command(resume=response), config=config, stream_mode=["messages", "updates"]):
@@ -322,13 +304,13 @@ if __name__ == "__main__":
     import asyncio
     
     async def main():
-        chat_agent = ChatAgent(model_type="tongyi")
-        async for chunk in chat_agent.chat("马上要考试了，很紧张，帮我生成一个肯定语", "123"):
-            print(chunk, end="|", flush=True)
+        chat_agent = ChatAgent(model_type="deepseek")
+        async for chunk in chat_agent.chat("你好", "123"):
+            print(chunk['content'], end="|", flush=True)
         
-        # 示例：用户响应中断，选择"yes"
-        async for chunk in chat_agent.resume_chat("yes", "123"):
-            print(chunk, end="|", flush=True)
+        # # 示例：用户响应中断，选择"yes"
+        # async for chunk in chat_agent.resume_chat("yes", "123"):
+        #     print(chunk, end="|", flush=True)
     
     # 运行异步主函数
     asyncio.run(main())
