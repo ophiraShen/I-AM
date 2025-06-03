@@ -66,7 +66,7 @@ python main.py
 
 ```bash
 # 克隆项目
-git clone https://github.com/YOUR_USERNAME/I-AM.git
+git clone https://github.com/ophiraShen/I-AM.git
 cd I-AM/project
 
 # 使用Docker Compose构建和启动
